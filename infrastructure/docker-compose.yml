@@ -1,0 +1,35 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: mana_market_db
+    restart: always
+    environment:
+      POSTGRES_USER: mana_user
+      POSTGRES_PASSWORD: mana_password
+      POSTGRES_DB: mana_market
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mana_user -d mana_market"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # New Worker Service
+  worker:
+    build: 
+      context: ../src/worker
+    container_name: mana_market_worker
+    environment:
+      DB_DSN: "postgres://mana_user:mana_password@timescaledb:5432/mana_market"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    profiles:
+      - batch
+
+volumes:
+  timescale_data:
