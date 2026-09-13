@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # New Worker Service
+  # Ingestion Worker (Batch process triggered by systemd)
   worker:
     build: 
       context: ../src/worker
@@ -30,6 +30,20 @@ services:
         condition: service_healthy
     profiles:
       - batch
+
+  # FastAPI Core Backend (Persistent REST API)
+  api:
+    build:
+      context: ../src/api
+    container_name: mana_market_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      DB_DSN: "postgres://mana_user:mana_password@timescaledb:5432/mana_market"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
 
 volumes:
   timescale_data:

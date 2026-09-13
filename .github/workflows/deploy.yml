@@ -10,6 +10,18 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Create Test File in Home Directory
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy Infrastructure and API
         run: |
-          echo "Pipeline verified at $(date)" > ~/ci_cd_test.txt
+          cd /opt/mana-market-engine/infrastructure
+          
+          # Pull latest commits
+          git pull origin main
+          
+          # Build batch worker image for systemd execution
+          docker compose --profile batch build worker
+          
+          # Rebuild and restart API service without downtime for database
+          docker compose up -d --build api
