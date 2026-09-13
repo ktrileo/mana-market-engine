@@ -1,4 +1,4 @@
-name: Deploy to Private Debian Server
+name: Deploy to Debian
 
 on:
   push:
@@ -10,24 +10,6 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Deploy Container Updates
+      - name: Create Test File in Home Directory
         run: |
-          cd /opt/mana-market-engine
-          git pull origin main
-          docker compose --profile batch build worker
-          docker compose up -d --build api
-          
-      - name: Create Verification File
-        run: |
-          mkdir -p /opt/mana-market-engine
-          echo "Pipeline run successfully at $(date)" > /opt/mana-market-engine/ci_cd_test.txt
-          echo "Current deployment commit: $GITHUB_SHA" >> /opt/mana-market-engine/ci_cd_test.txt
-
-      - name: Verify Working Directory
-        run: |
-          cd /opt/mana-market-engine
-          git pull origin main || true
-          ls -la /opt/mana-market-engine
+          echo "Pipeline verified at $(date)" > ~/ci_cd_test.txt
