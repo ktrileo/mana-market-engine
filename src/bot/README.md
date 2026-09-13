@@ -52,12 +52,21 @@ python src/bot/register_commands.py --app-id <APP_ID> --token <BOT_TOKEN> --list
 
 ---
 
-## 4. Interactions Endpoint URL
+## 4. Interactions Endpoint URL (Cloudflare Quick Tunnel)
 
-Once your Cloudflare Tunnel is running and pointing to your API:
-1. Go to [Discord Developer Portal](https://discord.com/developers/applications) $\rightarrow$ Your App $\rightarrow$ **General Information**.
-2. In the **Interactions Endpoint URL** field, enter:
-   ```text
-   https://market.yourdomain.com/api/v1/discord/interactions
+Because `infrastructure/docker-compose.yml` runs a free Cloudflare Quick Tunnel (`trycloudflare.com`):
+
+1. On your Debian host, check the tunnel logs to find your public URL:
+   ```bash
+   docker logs mana_market_tunnel 2>&1 | grep -o 'https://.*\.trycloudflare\.com' | head -n 1
    ```
-3. Click **Save Changes**. Discord will immediately send a cryptographic `PING` request. Our FastAPI server validates the Ed25519 signature and returns `{"type": 1}` (`PONG`), verifying the URL.
+   *(Or simply run `docker compose logs tunnel` to view the quick tunnel banner)*.
+
+2. Go to the [Discord Developer Portal](https://discord.com/developers/applications) $\rightarrow$ Your App $\rightarrow$ **General Information**.
+
+3. In the **Interactions Endpoint URL** field, paste your URL followed by `/api/v1/discord/interactions`:
+   ```text
+   https://<your-subdomain>.trycloudflare.com/api/v1/discord/interactions
+   ```
+
+4. Click **Save Changes**. Discord will immediately dispatch an Ed25519 `PING` request. The API verifies the cryptographic signature and returns `{"type": 1}` (`PONG`), activating your Discord bot!

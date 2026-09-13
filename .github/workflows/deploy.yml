@@ -23,5 +23,5 @@ jobs:
           # Build batch worker image for systemd execution
           docker compose --profile batch build worker
           
-          # Rebuild and restart API service without downtime for database
-          docker compose up -d --build api
+          # Rebuild and restart API and Tunnel services without downtime for database
+          docker compose up -d --build api tunnel

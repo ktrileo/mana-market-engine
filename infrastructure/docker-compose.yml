@@ -70,5 +70,15 @@ services:
       retries: 3
       start_period: 10s
 
+  # Cloudflare Quick Tunnel (Free public HTTPS endpoint for Discord interactions)
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: mana_market_tunnel
+    restart: always
+    command: tunnel --url http://api:8000 --no-autoupdate
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   timescale_data:
