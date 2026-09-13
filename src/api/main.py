@@ -34,7 +34,7 @@ async def health_check():
 
 @app.get("/api/v1/movers")
 async def get_market_movers(
-    direction: str = Query("gainers", regex="^(gainers|losers)$"),
+    direction: str = Query("gainers", pattern="^(gainers|losers)$"),
     days: int = Query(1, ge=1, le=30),
     limit: int = Query(10, ge=1, le=50)
 ):
