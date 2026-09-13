@@ -57,6 +57,7 @@ services:
     environment:
       DB_DSN: "postgres://mana_user:mana_password@timescaledb:5432/mana_market"
       REDIS_URL: "redis://redis:6379/0"
+      DISCORD_PUBLIC_KEY: "${DISCORD_PUBLIC_KEY:-}"
     depends_on:
       timescaledb:
         condition: service_healthy
