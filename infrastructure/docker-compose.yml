@@ -37,8 +37,11 @@ services:
     container_name: mana_market_worker
     environment:
       DB_DSN: "postgres://mana_user:mana_password@timescaledb:5432/mana_market"
+      REDIS_URL: "redis://redis:6379/0"
     depends_on:
       timescaledb:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     profiles:
       - batch

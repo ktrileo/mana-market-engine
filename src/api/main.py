@@ -12,7 +12,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 MIN_BASE_PRICE = 1.00
 MIN_PERCENT_CHANGE = 15.0
 MIN_ABSOLUTE_CHANGE = 0.50
-CACHE_TTL_SECONDS = 3600  # 1 hour cache
+CACHE_TTL_SECONDS = 86400  # 24 hours (synchronized with daily bulk ingestion schedule)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

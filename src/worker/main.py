@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 # Homelab Database Connection String (matching docker-compose.yml)
 DB_DSN = os.getenv("DB_DSN", "postgres://mana_user:mana_password@localhost:5432/mana_market")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 HEADERS = {
     "User-Agent": "ManaMarketEngine/1.0",
@@ -32,6 +33,24 @@ def flush_to_db(cursor, cards_batch, prices_batch):
             VALUES %s 
             ON CONFLICT (timestamp, card_id, vendor) DO NOTHING
         """, prices_batch)
+
+def invalidate_movers_cache():
+    """Invalidates cached movers in Redis so API serves fresh data for the new day."""
+    print("6. Invalidating Redis movers cache...")
+    try:
+        import redis
+        r = redis.from_url(REDIS_URL, decode_responses=True)
+        cursor = 0
+        keys_deleted = 0
+        while True:
+            cursor, keys = r.scan(cursor=cursor, match="api:movers:*", count=100)
+            if keys:
+                keys_deleted += r.delete(*keys)
+            if cursor == 0:
+                break
+        print(f"   -> Deleted {keys_deleted} cached mover key(s).")
+    except Exception as e:
+        print(f"   -> Warning: Could not invalidate Redis cache ({e})")
 
 def run_ingestion():
     print("1. Connecting to database...")
@@ -109,6 +128,9 @@ def run_ingestion():
     cursor.close()
     conn.close()
     print("5. Daily ingestion complete!")
+
+    # Synchronize cache: Invalidate cached mover keys so API serves fresh data
+    invalidate_movers_cache()
 
 if __name__ == "__main__":
     run_ingestion()
