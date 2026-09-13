@@ -1,0 +1,21 @@
+name: Deploy to Private Debian Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy Container Updates
+        run: |
+          cd /opt/mana-market-engine
+          git pull origin main
+          docker compose --profile batch build worker
+          docker compose up -d --build api
