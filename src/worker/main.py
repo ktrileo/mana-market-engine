@@ -34,21 +34,21 @@ def flush_to_db(cursor, cards_batch, prices_batch):
             ON CONFLICT (timestamp, card_id, vendor) DO NOTHING
         """, prices_batch)
 
-def invalidate_movers_cache():
-    """Invalidates cached movers in Redis so API serves fresh data for the new day."""
-    print("6. Invalidating Redis movers cache...")
+def invalidate_api_cache():
+    """Invalidates cached API responses in Redis so API serves fresh data for the new day."""
+    print("6. Invalidating Redis API cache...")
     try:
         import redis
         r = redis.from_url(REDIS_URL, decode_responses=True)
         cursor = 0
         keys_deleted = 0
         while True:
-            cursor, keys = r.scan(cursor=cursor, match="api:movers:*", count=100)
+            cursor, keys = r.scan(cursor=cursor, match="api:*", count=100)
             if keys:
                 keys_deleted += r.delete(*keys)
             if cursor == 0:
                 break
-        print(f"   -> Deleted {keys_deleted} cached mover key(s).")
+        print(f"   -> Deleted {keys_deleted} cached API key(s).")
     except Exception as e:
         print(f"   -> Warning: Could not invalidate Redis cache ({e})")
 
@@ -129,8 +129,8 @@ def run_ingestion():
     conn.close()
     print("5. Daily ingestion complete!")
 
-    # Synchronize cache: Invalidate cached mover keys so API serves fresh data
-    invalidate_movers_cache()
+    # Synchronize cache: Invalidate cached API keys so API serves fresh data
+    invalidate_api_cache()
 
 if __name__ == "__main__":
     run_ingestion()

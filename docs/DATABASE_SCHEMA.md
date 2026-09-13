@@ -1,7 +1,7 @@
 # Database Schema Documentation
 
 > **Introspection Source:** `Offline Parsing (init.sql)`  
-> **Last Generated:** `2026-09-13 20:10:59 UTC`
+> **Last Generated:** `2026-09-13 20:30:51 UTC`
 
 ## Overview
 
