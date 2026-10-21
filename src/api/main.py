@@ -36,9 +36,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-from discord_router import router as discord_router
-app.include_router(discord_router)
-
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "mana-market-api"}
