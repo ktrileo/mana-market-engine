@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Path, Query, Response
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from uuid import UUID
 import asyncpg
@@ -78,7 +79,7 @@ async def get_market_movers(
             WHERE price_usd IS NOT NULL AND timestamp <= NOW() - $1::interval
             ORDER BY card_id, timestamp DESC
         )
-        SELECT c.name, c.set_code, c.rarity, cp.price_now, pp.price_past,
+        SELECT c.card_id, c.name, c.set_code, c.rarity, cp.price_now, pp.price_past,
                (cp.price_now - pp.price_past) AS abs_change,
                ROUND(((cp.price_now - pp.price_past) / pp.price_past * 100), 2) AS percent_change
         FROM current_prices cp
@@ -241,3 +242,10 @@ async def get_card_history(
             }
 
     return await cached_json_response(app.state.redis, cache_key, fetch_history)
+
+
+# Mount Static Files for the lightweight Daily Report Dashboard
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(STATIC_DIR):
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+

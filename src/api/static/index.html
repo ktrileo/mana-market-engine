@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mana Market Engine • MTG Daily Financial Report</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#10b981',
+                            600: '#059669',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Chart.js (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+    <!-- Alpine.js (CDN) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    
+    <!-- Application Logic -->
+    <script src="/app.js"></script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; color: black !important; }
+            .print-card { border: 1px solid #ccc !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-slate-950" x-data="dashboardApp">
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3 shrink-0">
+                <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                        <polyline points="16 7 22 7 22 13"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold tracking-tight text-white text-base">Mana Market Engine</span>
+                        <span class="text-[10px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Live</span>
+                    </div>
+                    <p class="text-xs text-slate-400">Daily Magic Financial Ticker</p>
+                </div>
+            </div>
+
+            <!-- Global Card Search -->
+            <div class="flex-1 max-w-md relative" id="search-container">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <input 
+                        type="text" 
+                        class="w-full pl-9 pr-9 py-1.5 bg-slate-900/90 border border-slate-700/80 rounded-lg text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all"
+                        placeholder="Search any MTG card (e.g. Mox Opal, Sheoldred)..."
+                        x-model="searchQuery"
+                        @input="onSearchInput"
+                        @focus="if(searchResults.length) showSearchDropdown = true"
+                    >
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center" x-show="searchLoading" x-cloak>
+                        <svg class="animate-spin w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Search Results Dropdown -->
+                <div 
+                    class="absolute mt-1.5 w-full bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden z-50 divide-y divide-slate-800/60"
+                    x-show="showSearchDropdown && searchResults.length > 0"
+                    x-cloak
+                    @click.away="showSearchDropdown = false"
+                >
+                    <template x-for="item in searchResults" :key="item.card_id">
+                        <button 
+                            type="button"
+                            class="w-full px-3.5 py-2.5 text-left flex items-center justify-between hover:bg-slate-800/70 transition-colors group"
+                            @click="selectCard(item)"
+                        >
+                            <div class="flex items-center space-x-3 truncate">
+                                <img 
+                                    :src="item.image_uri_small || item.image_uri || '/favicon.svg'" 
+                                    class="w-7 h-10 object-cover rounded bg-slate-800 border border-slate-700/50 shrink-0"
+                                    alt=""
+                                >
+                                <div class="truncate">
+                                    <div class="text-sm font-medium text-slate-100 group-hover:text-emerald-400 transition-colors truncate" x-text="item.name"></div>
+                                    <div class="text-xs text-slate-400 flex items-center space-x-1.5">
+                                        <span class="font-mono uppercase font-semibold text-[11px]" x-text="item.set_code"></span>
+                                        <span>•</span>
+                                        <span class="capitalize" x-text="item.rarity"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right shrink-0 pl-2">
+                                <div class="text-sm font-mono font-semibold text-slate-100" x-text="formatPrice(item.price_usd)"></div>
+                                <div class="text-[11px] text-slate-400" x-text="item.price_usd_foil ? `Foil: ${formatPrice(item.price_usd_foil)}` : 'Normal'"></div>
+                            </div>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Header Quick Actions -->
+            <div class="flex items-center space-x-2">
+                <button 
+                    @click="fetchMovers(); fetchSummaryHighlights();" 
+                    class="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-all"
+                    title="Refresh data"
+                >
+                    <svg class="w-4 h-4" :class="{'animate-spin text-emerald-400': loading}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                </button>
+                <button 
+                    onclick="window.print()" 
+                    class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg transition-all"
+                    title="Print or Save PDF"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                    <span>Print Report</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Market Highlight Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            
+            <!-- Top Gainer Card -->
+            <div 
+                class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700/80 transition-all cursor-pointer relative overflow-hidden group"
+                @click="topGainer && topGainer.card_id && inspectCardById(topGainer.card_id, topGainer)"
+            >
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-all pointer-events-none"></div>
+                <div>
+                    <div class="flex items-center justify-between text-xs text-slate-400 font-medium mb-1">
+                        <span class="flex items-center space-x-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span>Biggest Market Spike</span>
+                        </span>
+                        <span class="text-[11px] font-mono text-emerald-400" x-text="`${days}D Window`"></span>
+                    </div>
+                    <div class="mt-2" x-show="topGainer" x-cloak>
+                        <h3 class="text-base font-semibold text-slate-100 group-hover:text-emerald-400 transition-colors truncate" x-text="topGainer ? topGainer.name : ''"></h3>
+                        <div class="text-xs text-slate-400 mt-0.5 flex items-center space-x-2">
+                            <span class="font-mono uppercase font-semibold text-[11px]" x-text="topGainer ? topGainer.set_code : ''"></span>
+                            <span>•</span>
+                            <span class="text-slate-300" x-text="`${formatPrice(topGainer?.price_past)} → ${formatPrice(topGainer?.price_now)}`"></span>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-sm text-slate-500 italic" x-show="!topGainer && !summaryLoading" x-cloak>
+                        No significant gainers meeting threshold.
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center justify-between pt-2 border-t border-slate-800/60" x-show="topGainer" x-cloak>
+                    <span class="text-xs text-slate-400">Shift</span>
+                    <span class="inline-flex items-center space-x-1 text-sm font-mono font-bold text-emerald-400">
+                        <span x-text="formatDelta(topGainer?.abs_change)"></span>
+                        <span class="text-xs bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded" x-text="formatPercent(topGainer?.percent_change)"></span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Top Loser Card -->
+            <div 
+                class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700/80 transition-all cursor-pointer relative overflow-hidden group"
+                @click="topLoser && topLoser.card_id && inspectCardById(topLoser.card_id, topLoser)"
+            >
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl group-hover:bg-rose-500/10 transition-all pointer-events-none"></div>
+                <div>
+                    <div class="flex items-center justify-between text-xs text-slate-400 font-medium mb-1">
+                        <span class="flex items-center space-x-1">
+                            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                            <span>Biggest Market Drop</span>
+                        </span>
+                        <span class="text-[11px] font-mono text-rose-400" x-text="`${days}D Window`"></span>
+                    </div>
+                    <div class="mt-2" x-show="topLoser" x-cloak>
+                        <h3 class="text-base font-semibold text-slate-100 group-hover:text-rose-400 transition-colors truncate" x-text="topLoser ? topLoser.name : ''"></h3>
+                        <div class="text-xs text-slate-400 mt-0.5 flex items-center space-x-2">
+                            <span class="font-mono uppercase font-semibold text-[11px]" x-text="topLoser ? topLoser.set_code : ''"></span>
+                            <span>•</span>
+                            <span class="text-slate-300" x-text="`${formatPrice(topLoser?.price_past)} → ${formatPrice(topLoser?.price_now)}`"></span>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-sm text-slate-500 italic" x-show="!topLoser && !summaryLoading" x-cloak>
+                        No significant drops meeting threshold.
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center justify-between pt-2 border-t border-slate-800/60" x-show="topLoser" x-cloak>
+                    <span class="text-xs text-slate-400">Shift</span>
+                    <span class="inline-flex items-center space-x-1 text-sm font-mono font-bold text-rose-400">
+                        <span x-text="formatDelta(topLoser?.abs_change)"></span>
+                        <span class="text-xs bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded" x-text="formatPercent(topLoser?.percent_change)"></span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Noise Filter & Status Card -->
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between sm:col-span-2 lg:col-span-1">
+                <div>
+                    <div class="flex items-center justify-between text-xs text-slate-400 font-medium mb-1">
+                        <span>Noise Filter Criteria</span>
+                        <span class="text-[11px] text-slate-500 font-mono">Active</span>
+                    </div>
+                    <div class="mt-2 space-y-1 text-xs text-slate-300">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Min Base Price:</span>
+                            <span class="font-mono font-medium">$1.00 USD</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Min Absolute Shift:</span>
+                            <span class="font-mono font-medium">$0.50 USD</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Min Relative Shift:</span>
+                            <span class="font-mono font-medium">15.0%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
+                    <span>Last Refreshed:</span>
+                    <span class="font-mono text-slate-200" x-text="lastUpdatedTime"></span>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Report Toolbar & Controls -->
+        <section class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- Gainers vs Losers Tabs -->
+            <div class="flex items-center bg-slate-950/80 p-1 rounded-lg border border-slate-800/80">
+                <button 
+                    type="button"
+                    class="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all"
+                    :class="direction === 'gainers' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+                    @click="setDirection('gainers')"
+                >
+                    <span>📈</span>
+                    <span>Top Gainers</span>
+                </button>
+                <button 
+                    type="button"
+                    class="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all"
+                    :class="direction === 'losers' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+                    @click="setDirection('losers')"
+                >
+                    <span>📉</span>
+                    <span>Top Losers</span>
+                </button>
+            </div>
+
+            <!-- Lookback Window & Limit Controls -->
+            <div class="flex items-center flex-wrap gap-2.5">
+                
+                <!-- Time Range -->
+                <div class="flex items-center bg-slate-950/80 p-1 rounded-lg border border-slate-800/80 text-xs font-medium">
+                    <button 
+                        @click="setDays(1)" 
+                        class="px-2.5 py-1 rounded transition-colors"
+                        :class="days === 1 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                    >24 Hours</button>
+                    <button 
+                        @click="setDays(7)" 
+                        class="px-2.5 py-1 rounded transition-colors"
+                        :class="days === 7 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                    >7 Days</button>
+                    <button 
+                        @click="setDays(30)" 
+                        class="px-2.5 py-1 rounded transition-colors"
+                        :class="days === 30 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                    >30 Days</button>
+                </div>
+
+                <!-- Limit Selector -->
+                <div class="flex items-center space-x-1.5 text-xs text-slate-400">
+                    <span class="hidden sm:inline">Show:</span>
+                    <select 
+                        class="bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1.5 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        x-model="limit"
+                        @change="setLimit(parseInt(limit))"
+                    >
+                        <option value="10">10 cards</option>
+                        <option value="15">15 cards</option>
+                        <option value="25">25 cards</option>
+                        <option value="50">50 cards</option>
+                    </select>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- Main Movers Data Table -->
+        <section class="bg-slate-900/40 border border-slate-800/80 rounded-xl overflow-hidden shadow-xl print-card">
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-800 bg-slate-900/80 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+                            <th class="py-3 px-4 w-12 text-center">#</th>
+                            <th class="py-3 px-4">Card Name</th>
+                            <th class="py-3 px-3 text-center">Set</th>
+                            <th class="py-3 px-3 text-center">Rarity</th>
+                            <th class="py-3 px-4 text-right">Prior Price</th>
+                            <th class="py-3 px-4 text-right">Latest Price</th>
+                            <th class="py-3 px-4 text-right">Dollar Change</th>
+                            <th class="py-3 px-4 text-right">Percent Change</th>
+                            <th class="py-3 px-4 text-center w-24 no-print">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/50">
+                        
+                        <!-- Loading State -->
+                        <tr x-show="loading" x-cloak>
+                            <td colspan="9" class="py-12 text-center text-slate-400">
+                                <div class="inline-flex items-center space-x-2 text-sm">
+                                    <svg class="animate-spin w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Querying TimescaleDB market deltas...</span>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Empty State -->
+                        <tr x-show="!loading && movers.length === 0" x-cloak>
+                            <td colspan="9" class="py-12 text-center text-slate-400">
+                                <div class="max-w-sm mx-auto space-y-1">
+                                    <p class="font-medium text-slate-200">No market movers found</p>
+                                    <p class="text-xs text-slate-400">No cards met the minimum threshold ($1.00 base, 15% shift, $0.50 delta) over the selected window.</p>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Card Rows -->
+                        <template x-for="(card, index) in movers" :key="index">
+                            <tr 
+                                class="hover:bg-slate-800/40 transition-colors cursor-pointer group"
+                                @click="card.card_id ? inspectCardById(card.card_id, card) : null"
+                            >
+                                <!-- Rank -->
+                                <td class="py-3.5 px-4 text-center font-mono text-xs text-slate-500 group-hover:text-slate-300 font-semibold" x-text="index + 1"></td>
+                                
+                                <!-- Card Name -->
+                                <td class="py-3.5 px-4">
+                                    <div class="font-semibold text-slate-100 group-hover:text-emerald-400 transition-colors" x-text="card.name"></div>
+                                </td>
+
+                                <!-- Set Code -->
+                                <td class="py-3.5 px-3 text-center">
+                                    <span class="inline-block px-2 py-0.5 rounded font-mono text-[11px] font-bold uppercase bg-slate-800/90 text-slate-300 border border-slate-700/60" x-text="card.set_code"></span>
+                                </td>
+
+                                <!-- Rarity Badge -->
+                                <td class="py-3.5 px-3 text-center">
+                                    <span 
+                                        class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold capitalize border"
+                                        :class="getRarityBadgeClass(card.rarity)"
+                                        x-text="card.rarity"
+                                    ></span>
+                                </td>
+
+                                <!-- Past Price -->
+                                <td class="py-3.5 px-4 text-right font-mono text-slate-400" x-text="formatPrice(card.price_past)"></td>
+
+                                <!-- Current Price -->
+                                <td class="py-3.5 px-4 text-right font-mono font-bold text-slate-100" x-text="formatPrice(card.price_now)"></td>
+
+                                <!-- Absolute Change -->
+                                <td class="py-3.5 px-4 text-right font-mono font-medium">
+                                    <span 
+                                        :class="parseFloat(card.abs_change) > 0 ? 'text-emerald-400' : 'text-rose-400'"
+                                        x-text="formatDelta(card.abs_change)"
+                                    ></span>
+                                </td>
+
+                                <!-- Percent Change -->
+                                <td class="py-3.5 px-4 text-right font-mono font-bold">
+                                    <span 
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs"
+                                        :class="parseFloat(card.percent_change) > 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'"
+                                        x-text="formatPercent(card.percent_change)"
+                                    ></span>
+                                </td>
+
+                                <!-- Action Button -->
+                                <td class="py-3.5 px-4 text-center no-print">
+                                    <button 
+                                        type="button" 
+                                        class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                                        @click.stop="card.card_id ? inspectCardById(card.card_id, card) : null"
+                                    >
+                                        History
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer summary line -->
+            <div class="px-4 py-3 bg-slate-900/60 border-t border-slate-800/80 text-xs text-slate-400 flex items-center justify-between">
+                <span>Showing top <strong class="text-slate-200" x-text="movers.length"></strong> <span x-text="direction"></span></span>
+                <span class="font-mono text-[11px] text-slate-500">FastAPI &bull; Redis Cache &bull; TimescaleDB</span>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Card Detail / Historical Price Modal -->
+    <div 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 no-print"
+        x-show="isModalOpen"
+        x-cloak
+    >
+        <!-- Backdrop -->
+        <div 
+            class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+            x-show="isModalOpen"
+            x-transition:enter="ease-out duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @click="closeModal()"
+        ></div>
+
+        <!-- Modal Card -->
+        <div 
+            class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl relative z-10 flex flex-col max-h-[90vh]"
+            x-show="isModalOpen"
+            x-transition:enter="ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+        >
+            <!-- Modal Header -->
+            <div class="p-4 sm:p-6 border-b border-slate-800 flex items-start justify-between bg-slate-900/80">
+                <div class="flex items-start space-x-4">
+                    <img 
+                        :src="selectedCard?.image_uri || selectedCard?.image_uri_small || '/favicon.svg'" 
+                        class="w-14 h-20 sm:w-20 sm:h-28 object-cover rounded-lg bg-slate-800 border border-slate-700/80 shadow-md shrink-0"
+                        alt=""
+                    >
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-bold text-white tracking-tight" x-text="selectedCard?.name"></h2>
+                        <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+                            <span class="font-mono uppercase font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700" x-text="selectedCard?.set_code"></span>
+                            <span class="capitalize px-2 py-0.5 rounded border" :class="getRarityBadgeClass(selectedCard?.rarity)" x-text="selectedCard?.rarity"></span>
+                            <span class="text-slate-400" x-show="selectedCard?.collector_number" x-text="`#${selectedCard?.collector_number}`"></span>
+                        </div>
+                        <div class="mt-2.5 flex items-center space-x-3 text-xs">
+                            <a 
+                                :href="selectedCard?.scryfall_uri || `https://scryfall.com/search?q=${encodeURIComponent(selectedCard?.name || '')}`" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center space-x-1 text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                            >
+                                <span>View on Scryfall</span>
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <button 
+                    @click="closeModal()" 
+                    class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-4 sm:p-6 space-y-6 overflow-y-auto">
+                
+                <!-- Quick Stats Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-xs text-slate-400 block">Current Price</span>
+                        <span class="text-lg font-mono font-bold text-white" x-text="formatPrice(cardStats?.current_price_usd || selectedCard?.price_now || selectedCard?.price_usd)"></span>
+                    </div>
+                    <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-xs text-slate-400 block" x-text="`${historyDays}D Period Change`"></span>
+                        <span 
+                            class="text-lg font-mono font-bold"
+                            :class="cardStats && cardStats.percent_change_usd >= 0 ? 'text-emerald-400' : 'text-rose-400'"
+                            x-text="cardStats ? formatPercent(cardStats.percent_change_usd) : 'N/A'"
+                        ></span>
+                    </div>
+                    <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-xs text-slate-400 block" x-text="`${historyDays}D Range Low`"></span>
+                        <span class="text-lg font-mono font-bold text-slate-300" x-text="formatPrice(cardStats?.min_price_usd)"></span>
+                    </div>
+                    <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-xs text-slate-400 block" x-text="`${historyDays}D Range High`"></span>
+                        <span class="text-lg font-mono font-bold text-slate-300" x-text="formatPrice(cardStats?.max_price_usd)"></span>
+                    </div>
+                </div>
+
+                <!-- Price History Chart -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Price Trend (USD)</h4>
+                        
+                        <!-- History Days Switcher -->
+                        <div class="flex items-center space-x-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-xs">
+                            <button 
+                                @click="setHistoryDays(7)" 
+                                class="px-2 py-0.5 rounded transition-colors"
+                                :class="historyDays === 7 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                            >7D</button>
+                            <button 
+                                @click="setHistoryDays(30)" 
+                                class="px-2 py-0.5 rounded transition-colors"
+                                :class="historyDays === 30 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                            >30D</button>
+                            <button 
+                                @click="setHistoryDays(90)" 
+                                class="px-2 py-0.5 rounded transition-colors"
+                                :class="historyDays === 90 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                            >90D</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950/70 p-4 rounded-xl border border-slate-800/80 h-64 relative flex items-center justify-center">
+                        <div x-show="historyLoading" class="absolute inset-0 bg-slate-950/70 flex items-center justify-center z-10">
+                            <svg class="animate-spin w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                        <canvas id="priceHistoryChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-800 bg-slate-900/60 flex items-center justify-end">
+                <button 
+                    type="button" 
+                    @click="closeModal()" 
+                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs rounded-lg transition-colors"
+                >
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
+
