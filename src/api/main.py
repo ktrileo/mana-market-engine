@@ -15,6 +15,7 @@ MIN_PERCENT_CHANGE = 15.0
 MIN_ABSOLUTE_CHANGE = 0.50
 CACHE_TTL_SECONDS = 86400  # 24 hours (synchronized with daily bulk ingestion schedule)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize DB and Redis connection pools
@@ -29,6 +30,7 @@ async def lifespan(app: FastAPI):
     await app.state.redis.aclose()
     print("Connection pools closed.")
 
+
 app = FastAPI(
     title="Mana Market API",
     description="Core financial API for MTG market data with Redis caching",
@@ -36,9 +38,23 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+
+async def cached_json_response(redis: aioredis.Redis, cache_key: str, producer_fn, ttl: int = CACHE_TTL_SECONDS) -> Response:
+    """Returns cached JSON response from Redis or executes producer_fn, caches, and returns fresh data."""
+    cached_data = await redis.get(cache_key)
+    if cached_data:
+        return Response(content=cached_data, media_type="application/json")
+
+    data = await producer_fn()
+    json_bytes = json.dumps(data, default=str)
+    await redis.set(cache_key, json_bytes, ex=ttl)
+    return Response(content=json_bytes, media_type="application/json")
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "mana-market-api"}
+
 
 @app.get("/api/v1/movers")
 async def get_market_movers(
@@ -47,16 +63,9 @@ async def get_market_movers(
     limit: int = Query(10, ge=1, le=50)
 ):
     """Fetch the top market gainers or losers, leveraging Redis cache."""
-    
     cache_key = f"api:movers:{direction}:d{days}:l{limit}"
-    
-    try:
-        # 1. Check Redis for a cached response
-        cached_data = await app.state.redis.get(cache_key)
-        if cached_data:
-            return Response(content=cached_data, media_type="application/json")
-            
-        # 2. Cache Miss: Execute TimescaleDB Query
+
+    async def fetch_movers():
         query = """
         WITH current_prices AS (
             SELECT DISTINCT ON (card_id) card_id, price_usd AS price_now
@@ -79,7 +88,6 @@ async def get_market_movers(
           AND ABS(cp.price_now - pp.price_past) >= $3
           AND ABS((cp.price_now - pp.price_past) / pp.price_past * 100) >= $4
         """
-        
         if direction == "gainers":
             query += " AND (cp.price_now - pp.price_past) > 0 ORDER BY percent_change DESC LIMIT $5;"
         else:
@@ -94,25 +102,15 @@ async def get_market_movers(
                 MIN_PERCENT_CHANGE,
                 limit
             )
-            
-            # Format and serialize results
-            response_payload = {
+            return {
                 "window_days": days,
                 "direction": direction,
                 "cached": False,
                 "results": [dict(row) for row in rows]
             }
-            
-            # default=str handles asyncpg Decimal conversions natively
-            json_response = json.dumps(response_payload, default=str)
-            
-            # 3. Store in Redis with TTL
-            await app.state.redis.set(cache_key, json_response, ex=CACHE_TTL_SECONDS)
-            
-            return Response(content=json_response, media_type="application/json")
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+    return await cached_json_response(app.state.redis, cache_key, fetch_movers)
+
 
 @app.get("/api/v1/cards/search")
 async def search_cards(
@@ -122,14 +120,8 @@ async def search_cards(
     """Search for cards by name with current market prices and artwork URIs."""
     clean_query = q.strip()
     cache_key = f"api:cards:search:{clean_query.lower()}:l{limit}"
-    
-    try:
-        # 1. Check Redis cache
-        cached_data = await app.state.redis.get(cache_key)
-        if cached_data:
-            return Response(content=cached_data, media_type="application/json")
-            
-        # 2. Query TimescaleDB / PostgreSQL
+
+    async def fetch_search():
         query = """
         SELECT
             c.card_id,
@@ -171,23 +163,17 @@ async def search_cards(
             c.set_code ASC
         LIMIT $2;
         """
-        
         async with app.state.db_pool.acquire() as conn:
             rows = await conn.fetch(query, clean_query, limit)
-            
-            response_payload = {
+            return {
                 "query": clean_query,
                 "count": len(rows),
                 "cached": False,
                 "results": [dict(row) for row in rows]
             }
-            
-            json_response = json.dumps(response_payload, default=str)
-            await app.state.redis.set(cache_key, json_response, ex=CACHE_TTL_SECONDS)
-            return Response(content=json_response, media_type="application/json")
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+    return await cached_json_response(app.state.redis, cache_key, fetch_search)
+
 
 @app.get("/api/v1/cards/{card_id}/history")
 async def get_card_history(
@@ -196,15 +182,9 @@ async def get_card_history(
 ):
     """Retrieve historical daily price points and financial summary stats for a card."""
     cache_key = f"api:cards:{card_id}:history:d{days}"
-    
-    try:
-        # 1. Check Redis cache
-        cached_data = await app.state.redis.get(cache_key)
-        if cached_data:
-            return Response(content=cached_data, media_type="application/json")
-            
+
+    async def fetch_history():
         async with app.state.db_pool.acquire() as conn:
-            # 2. Fetch card metadata
             card_row = await conn.fetchrow("""
                 SELECT
                     card_id, oracle_id, name, set_code, collector_number, rarity, mana_value,
@@ -216,11 +196,10 @@ async def get_card_history(
                 FROM dim_cards
                 WHERE card_id = $1;
             """, card_id)
-            
+
             if not card_row:
                 raise HTTPException(status_code=404, detail=f"Card with ID '{card_id}' not found")
-                
-            # 3. Fetch price history series
+
             history_rows = await conn.fetch("""
                 SELECT
                     timestamp,
@@ -233,12 +212,10 @@ async def get_card_history(
                   AND timestamp >= NOW() - $2::interval
                 ORDER BY timestamp ASC;
             """, card_id, timedelta(days=days))
-            
+
             history_list = [dict(r) for r in history_rows]
-            
-            # 4. Compute financial performance metrics over the requested window
             valid_usd_prices = [float(h["price_usd"]) for h in history_list if h.get("price_usd") is not None]
-            
+
             stats = None
             if valid_usd_prices:
                 oldest_usd = valid_usd_prices[0]
@@ -254,20 +231,13 @@ async def get_card_history(
                     "max_price_usd": max(valid_usd_prices),
                     "data_points": len(valid_usd_prices)
                 }
-                
-            response_payload = {
+
+            return {
                 "card": dict(card_row),
                 "window_days": days,
                 "stats": stats,
                 "cached": False,
                 "history": history_list
             }
-            
-            json_response = json.dumps(response_payload, default=str)
-            await app.state.redis.set(cache_key, json_response, ex=CACHE_TTL_SECONDS)
-            return Response(content=json_response, media_type="application/json")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+    return await cached_json_response(app.state.redis, cache_key, fetch_history)
