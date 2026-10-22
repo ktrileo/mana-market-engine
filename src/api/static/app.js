@@ -1,58 +1,34 @@
 /**
- * Mana Market Engine - Granular Format-Aware Frontend Controller
+ * Mana Market Engine - Daily Report Frontend Controller
  * Powered by Alpine.js and Chart.js
  */
 
+// MTG format metadata: legality key (sent to API), display label, and date range info.
+const FORMATS = [
+    { key: 'all',      label: 'All Cards',  icon: '🌐', range: 'Every set' },
+    { key: 'standard', label: 'Standard',   icon: '⭐', range: 'WOE → Present' },
+    { key: 'pioneer',  label: 'Pioneer',    icon: '🏔️', range: 'RTR → Present' },
+    { key: 'modern',   label: 'Modern',     icon: '⚙️', range: 'MRD → Present' },
+];
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('dashboardApp', () => ({
-        // State
-        selectedFormat: 'standard', // 'all' | 'standard' | 'pioneer' | 'modern'
-        viewMode: 'table',          // 'table' | 'matrix'
-        direction: 'gainers',       // 'gainers' | 'losers'
-        days: 1,                    // 1 | 7 | 30
+        // Format State
+        formats: FORMATS,
+        activeFormat: 'all',
+
+        // Movers State
+        direction: 'gainers',
+        days: 1,
         limit: 15,
         loading: false,
         movers: [],
+
+        // Summary Highlight State
         topGainer: null,
         topLoser: null,
         summaryLoading: false,
         lastUpdatedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-
-        // Format metadata explanations
-        formatInfo: {
-            all: {
-                title: 'All Formats',
-                badge: 'Global',
-                subtitle: 'Complete Magic: The Gathering market catalog',
-                cutoff: 'All sets'
-            },
-            standard: {
-                title: 'Standard',
-                badge: 'WOE → Present',
-                subtitle: 'Current rotating constructed format',
-                cutoff: 'Wilds of Eldraine (Sept 2023) to today'
-            },
-            pioneer: {
-                title: 'Pioneer',
-                badge: 'RTR → Present',
-                subtitle: 'Premier constructed format',
-                cutoff: 'Return to Ravnica (Oct 2012) to today'
-            },
-            modern: {
-                title: 'Modern',
-                badge: 'MRD → Present',
-                subtitle: 'Non-rotating constructed format',
-                cutoff: 'Mirrodin (Oct 2003) to today'
-            }
-        },
-
-        // Side-by-Side Matrix State
-        matrixLoading: false,
-        matrixData: {
-            standard: { gainers: [], losers: [] },
-            pioneer: { gainers: [], losers: [] },
-            modern: { gainers: [], losers: [] }
-        },
 
         // Search State
         searchQuery: '',
@@ -76,27 +52,38 @@ document.addEventListener('alpine:init', () => {
                 this.fetchSummaryHighlights()
             ]);
 
-            // Close search dropdown on click outside
             document.addEventListener('click', (e) => {
                 if (!e.target.closest('#search-container')) {
                     this.showSearchDropdown = false;
                 }
             });
 
-            // Close modal on Escape
             document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && this.isModalOpen) {
-                    this.closeModal();
-                }
+                if (e.key === 'Escape' && this.isModalOpen) this.closeModal();
             });
         },
 
+        // --- Format ---
+        setFormat(key) {
+            if (this.activeFormat === key) return;
+            this.activeFormat = key;
+            this.fetchMovers();
+            this.fetchSummaryHighlights();
+        },
+
+        get activeFormatMeta() {
+            return FORMATS.find(f => f.key === this.activeFormat) || FORMATS[0];
+        },
+
         // --- Data Fetching ---
+        moversUrl(direction, limit) {
+            return `/api/v1/movers?direction=${direction}&days=${this.days}&limit=${limit}&format=${this.activeFormat}`;
+        },
+
         async fetchMovers() {
             this.loading = true;
             try {
-                const url = `/api/v1/movers?format=${this.selectedFormat}&direction=${this.direction}&days=${this.days}&limit=${this.limit}`;
-                const resp = await fetch(url);
+                const resp = await fetch(this.moversUrl(this.direction, this.limit));
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 const data = await resp.json();
                 this.movers = data.results || [];
@@ -113,10 +100,9 @@ document.addEventListener('alpine:init', () => {
             this.summaryLoading = true;
             try {
                 const [gainersResp, losersResp] = await Promise.all([
-                    fetch(`/api/v1/movers?format=${this.selectedFormat}&direction=gainers&days=${this.days}&limit=1`),
-                    fetch(`/api/v1/movers?format=${this.selectedFormat}&direction=losers&days=${this.days}&limit=1`)
+                    fetch(this.moversUrl('gainers', 1)),
+                    fetch(this.moversUrl('losers', 1))
                 ]);
-
                 if (gainersResp.ok) {
                     const gData = await gainersResp.json();
                     this.topGainer = gData.results && gData.results.length ? gData.results[0] : null;
@@ -132,48 +118,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        async fetchFormatMatrix() {
-            this.matrixLoading = true;
-            const formats = ['standard', 'pioneer', 'modern'];
-            try {
-                const requests = [];
-                for (const fmt of formats) {
-                    requests.push(
-                        fetch(`/api/v1/movers?format=${fmt}&direction=gainers&days=${this.days}&limit=5`).then(r => r.json()),
-                        fetch(`/api/v1/movers?format=${fmt}&direction=losers&days=${this.days}&limit=5`).then(r => r.json())
-                    );
-                }
-
-                const responses = await Promise.all(requests);
-                this.matrixData = {
-                    standard: { gainers: responses[0].results || [], losers: responses[1].results || [] },
-                    pioneer:  { gainers: responses[2].results || [], losers: responses[3].results || [] },
-                    modern:   { gainers: responses[4].results || [], losers: responses[5].results || [] }
-                };
-            } catch (err) {
-                console.error("Failed to load format matrix:", err);
-            } finally {
-                this.matrixLoading = false;
-            }
-        },
-
-        setFormat(newFormat) {
-            if (this.selectedFormat === newFormat) return;
-            this.selectedFormat = newFormat;
-            this.fetchMovers();
-            this.fetchSummaryHighlights();
-        },
-
-        setViewMode(mode) {
-            this.viewMode = mode;
-            if (mode === 'matrix') {
-                this.fetchFormatMatrix();
-            } else {
-                this.fetchMovers();
-                this.fetchSummaryHighlights();
-            }
-        },
-
         setDirection(newDirection) {
             if (this.direction === newDirection) return;
             this.direction = newDirection;
@@ -183,12 +127,8 @@ document.addEventListener('alpine:init', () => {
         setDays(newDays) {
             if (this.days === newDays) return;
             this.days = newDays;
-            if (this.viewMode === 'matrix') {
-                this.fetchFormatMatrix();
-            } else {
-                this.fetchMovers();
-                this.fetchSummaryHighlights();
-            }
+            this.fetchMovers();
+            this.fetchSummaryHighlights();
         },
 
         setLimit(newLimit) {
@@ -206,7 +146,6 @@ document.addEventListener('alpine:init', () => {
                 this.showSearchDropdown = false;
                 return;
             }
-
             this.searchDebounceTimeout = setTimeout(async () => {
                 this.searchLoading = true;
                 this.showSearchDropdown = true;
@@ -243,14 +182,10 @@ document.addEventListener('alpine:init', () => {
                 const resp = await fetch(`/api/v1/cards/${cardId}/history?days=${this.historyDays}`);
                 if (!resp.ok) throw new Error("Failed to load history");
                 const data = await resp.json();
-
                 this.selectedCard = data.card || initialCardData;
                 this.cardStats = data.stats;
                 this.cardHistory = data.history || [];
-
-                this.$nextTick(() => {
-                    this.renderPriceChart(this.cardHistory);
-                });
+                this.$nextTick(() => this.renderPriceChart(this.cardHistory));
             } catch (err) {
                 console.error("Failed to load card history:", err);
             } finally {
@@ -295,7 +230,7 @@ document.addEventListener('alpine:init', () => {
             this.chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels,
                     datasets: [{
                         label: 'Market Price (USD)',
                         data: dataValues,
@@ -314,10 +249,7 @@ document.addEventListener('alpine:init', () => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
+                    interaction: { intersect: false, mode: 'index' },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -368,29 +300,23 @@ document.addEventListener('alpine:init', () => {
         formatDelta(val) {
             if (val === null || val === undefined || isNaN(val)) return 'N/A';
             const num = parseFloat(val);
-            const prefix = num > 0 ? '+' : '';
-            return `${prefix}$${num.toFixed(2)}`;
+            return `${num > 0 ? '+' : ''}$${num.toFixed(2)}`;
         },
 
         formatPercent(val) {
             if (val === null || val === undefined || isNaN(val)) return '0.0%';
             const num = parseFloat(val);
-            const prefix = num > 0 ? '+' : '';
-            return `${prefix}${num.toFixed(1)}%`;
+            return `${num > 0 ? '+' : ''}${num.toFixed(1)}%`;
         },
 
         getRarityBadgeClass(rarity) {
-            const r = (rarity || '').toLowerCase();
-            switch (r) {
-                case 'mythic':
-                    return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-                case 'rare':
-                    return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
-                case 'uncommon':
-                    return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
-                default:
-                    return 'bg-slate-700/30 text-slate-400 border-slate-700/50';
+            switch ((rarity || '').toLowerCase()) {
+                case 'mythic':   return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                case 'rare':     return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+                case 'uncommon': return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
+                default:         return 'bg-slate-700/30 text-slate-400 border-slate-700/50';
             }
         }
     }));
 });
+

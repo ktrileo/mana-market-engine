@@ -39,11 +39,9 @@ An automated Magic: The Gathering (MTG) financial market engine and daily report
 ## Features
 
 * **Daily Market Report Dashboard**: Modern, dark-mode single-page dashboard accessible at `http://<server-ip>:8000/`.
-  * **Granular Format Ticker**: Filter gainers and losers across **Standard** (Wilds of Eldraine $\rightarrow$ Present), **Pioneer** (Return to Ravnica $\rightarrow$ Present), and **Modern** (Mirrodin $\rightarrow$ Present).
-  * **3-Format Comparison Matrix**: Side-by-side view comparing top movers across Standard, Pioneer, and Modern in one glance.
   * **Spikes & Crashes**: Toggle between top gainers and top losers.
   * **Time Windows**: Filter price shifts across 24 hours, 7 days, or 30 days.
-  * **Card Inspector**: Interactive 30-day price trend line charts (Chart.js) with format legality tags and Scryfall artwork previews.
+  * **Card Inspector**: Interactive 30-day price trend line charts (Chart.js) and Scryfall artwork previews.
   * **Live Search**: Instant debounced card search.
   * **Print-Ready**: Dedicated print view for export or morning paper briefing.
 * **Financial Noise Filtering**: Eliminates penny-stock bulk-bin volatility by enforcing:
@@ -61,7 +59,7 @@ An automated Magic: The Gathering (MTG) financial market engine and daily report
 | :--- | :---: | :--- |
 | `/` | `GET` | Embedded Daily Report web dashboard |
 | `/health` | `GET` | Container health probe |
-| `/api/v1/movers` | `GET` | Top market gainers or losers by format (`format=all\|standard\|pioneer\|modern`, `direction=gainers\|losers`, `days=1..30`, `limit=1..50`) |
+| `/api/v1/movers` | `GET` | Top market gainers or losers (`direction=gainers\|losers`, `days=1..30`, `limit=1..50`) |
 | `/api/v1/cards/search` | `GET` | Fuzzy card search with current market prices and artwork URIs (`q=...`, `limit=1..50`) |
 | `/api/v1/cards/{id}/history` | `GET` | Historical daily price points and summary stats (`days=1..365`) |
 
