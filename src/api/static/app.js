@@ -1,13 +1,15 @@
 /**
- * Mana Market Engine - Daily Report Frontend Controller
+ * Mana Market Engine - Granular Format-Aware Frontend Controller
  * Powered by Alpine.js and Chart.js
  */
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('dashboardApp', () => ({
         // State
-        direction: 'gainers',
-        days: 1,
+        selectedFormat: 'standard', // 'all' | 'standard' | 'pioneer' | 'modern'
+        viewMode: 'table',          // 'table' | 'matrix'
+        direction: 'gainers',       // 'gainers' | 'losers'
+        days: 1,                    // 1 | 7 | 30
         limit: 15,
         loading: false,
         movers: [],
@@ -15,6 +17,42 @@ document.addEventListener('alpine:init', () => {
         topLoser: null,
         summaryLoading: false,
         lastUpdatedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+
+        // Format metadata explanations
+        formatInfo: {
+            all: {
+                title: 'All Formats',
+                badge: 'Global',
+                subtitle: 'Complete Magic: The Gathering market catalog',
+                cutoff: 'All sets'
+            },
+            standard: {
+                title: 'Standard',
+                badge: 'WOE → Present',
+                subtitle: 'Current rotating constructed format',
+                cutoff: 'Wilds of Eldraine (Sept 2023) to today'
+            },
+            pioneer: {
+                title: 'Pioneer',
+                badge: 'RTR → Present',
+                subtitle: 'Premier constructed format',
+                cutoff: 'Return to Ravnica (Oct 2012) to today'
+            },
+            modern: {
+                title: 'Modern',
+                badge: 'MRD → Present',
+                subtitle: 'Non-rotating constructed format',
+                cutoff: 'Mirrodin (Oct 2003) to today'
+            }
+        },
+
+        // Side-by-Side Matrix State
+        matrixLoading: false,
+        matrixData: {
+            standard: { gainers: [], losers: [] },
+            pioneer: { gainers: [], losers: [] },
+            modern: { gainers: [], losers: [] }
+        },
 
         // Search State
         searchQuery: '',
@@ -57,7 +95,8 @@ document.addEventListener('alpine:init', () => {
         async fetchMovers() {
             this.loading = true;
             try {
-                const resp = await fetch(`/api/v1/movers?direction=${this.direction}&days=${this.days}&limit=${this.limit}`);
+                const url = `/api/v1/movers?format=${this.selectedFormat}&direction=${this.direction}&days=${this.days}&limit=${this.limit}`;
+                const resp = await fetch(url);
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 const data = await resp.json();
                 this.movers = data.results || [];
@@ -74,8 +113,8 @@ document.addEventListener('alpine:init', () => {
             this.summaryLoading = true;
             try {
                 const [gainersResp, losersResp] = await Promise.all([
-                    fetch(`/api/v1/movers?direction=gainers&days=${this.days}&limit=1`),
-                    fetch(`/api/v1/movers?direction=losers&days=${this.days}&limit=1`)
+                    fetch(`/api/v1/movers?format=${this.selectedFormat}&direction=gainers&days=${this.days}&limit=1`),
+                    fetch(`/api/v1/movers?format=${this.selectedFormat}&direction=losers&days=${this.days}&limit=1`)
                 ]);
 
                 if (gainersResp.ok) {
@@ -93,6 +132,48 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        async fetchFormatMatrix() {
+            this.matrixLoading = true;
+            const formats = ['standard', 'pioneer', 'modern'];
+            try {
+                const requests = [];
+                for (const fmt of formats) {
+                    requests.push(
+                        fetch(`/api/v1/movers?format=${fmt}&direction=gainers&days=${this.days}&limit=5`).then(r => r.json()),
+                        fetch(`/api/v1/movers?format=${fmt}&direction=losers&days=${this.days}&limit=5`).then(r => r.json())
+                    );
+                }
+
+                const responses = await Promise.all(requests);
+                this.matrixData = {
+                    standard: { gainers: responses[0].results || [], losers: responses[1].results || [] },
+                    pioneer:  { gainers: responses[2].results || [], losers: responses[3].results || [] },
+                    modern:   { gainers: responses[4].results || [], losers: responses[5].results || [] }
+                };
+            } catch (err) {
+                console.error("Failed to load format matrix:", err);
+            } finally {
+                this.matrixLoading = false;
+            }
+        },
+
+        setFormat(newFormat) {
+            if (this.selectedFormat === newFormat) return;
+            this.selectedFormat = newFormat;
+            this.fetchMovers();
+            this.fetchSummaryHighlights();
+        },
+
+        setViewMode(mode) {
+            this.viewMode = mode;
+            if (mode === 'matrix') {
+                this.fetchFormatMatrix();
+            } else {
+                this.fetchMovers();
+                this.fetchSummaryHighlights();
+            }
+        },
+
         setDirection(newDirection) {
             if (this.direction === newDirection) return;
             this.direction = newDirection;
@@ -102,8 +183,12 @@ document.addEventListener('alpine:init', () => {
         setDays(newDays) {
             if (this.days === newDays) return;
             this.days = newDays;
-            this.fetchMovers();
-            this.fetchSummaryHighlights();
+            if (this.viewMode === 'matrix') {
+                this.fetchFormatMatrix();
+            } else {
+                this.fetchMovers();
+                this.fetchSummaryHighlights();
+            }
         },
 
         setLimit(newLimit) {
@@ -163,7 +248,6 @@ document.addEventListener('alpine:init', () => {
                 this.cardStats = data.stats;
                 this.cardHistory = data.history || [];
 
-                // Render Chart on next DOM tick once modal is visible
                 this.$nextTick(() => {
                     this.renderPriceChart(this.cardHistory);
                 });
@@ -200,7 +284,7 @@ document.addEventListener('alpine:init', () => {
             const dataValues = validPoints.map(p => parseFloat(p.price_usd));
 
             const isPositive = dataValues.length > 1 && dataValues[dataValues.length - 1] >= dataValues[0];
-            const lineColor = isPositive ? '#10b981' : '#f43f5e'; // emerald-500 vs rose-500
+            const lineColor = isPositive ? '#10b981' : '#f43f5e';
             const bgGradientColor = isPositive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)';
 
             const ctx = canvas.getContext('2d');
@@ -310,4 +394,3 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 });
-

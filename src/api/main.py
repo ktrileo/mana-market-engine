@@ -60,11 +60,12 @@ async def health_check():
 @app.get("/api/v1/movers")
 async def get_market_movers(
     direction: str = Query("gainers", pattern="^(gainers|losers)$"),
+    format: str = Query("all", pattern="^(all|standard|pioneer|modern)$"),
     days: int = Query(1, ge=1, le=30),
     limit: int = Query(10, ge=1, le=50)
 ):
-    """Fetch the top market gainers or losers, leveraging Redis cache."""
-    cache_key = f"api:movers:{direction}:d{days}:l{limit}"
+    """Fetch the top market gainers or losers filtered by format, leveraging Redis cache."""
+    cache_key = f"api:movers:{format}:{direction}:d{days}:l{limit}"
 
     async def fetch_movers():
         query = """
@@ -81,7 +82,10 @@ async def get_market_movers(
         )
         SELECT c.card_id, c.name, c.set_code, c.rarity, cp.price_now, pp.price_past,
                (cp.price_now - pp.price_past) AS abs_change,
-               ROUND(((cp.price_now - pp.price_past) / pp.price_past * 100), 2) AS percent_change
+               ROUND(((cp.price_now - pp.price_past) / pp.price_past * 100), 2) AS percent_change,
+               COALESCE(c.raw_scryfall_data->'legalities'->>'standard' = 'legal', false) AS is_standard,
+               COALESCE(c.raw_scryfall_data->'legalities'->>'pioneer' = 'legal', false) AS is_pioneer,
+               COALESCE(c.raw_scryfall_data->'legalities'->>'modern' = 'legal', false) AS is_modern
         FROM current_prices cp
         JOIN past_prices pp ON cp.card_id = pp.card_id
         JOIN dim_cards c ON cp.card_id = c.card_id
@@ -89,6 +93,13 @@ async def get_market_movers(
           AND ABS(cp.price_now - pp.price_past) >= $3
           AND ABS((cp.price_now - pp.price_past) / pp.price_past * 100) >= $4
         """
+        if format == "standard":
+            query += " AND c.raw_scryfall_data->'legalities'->>'standard' = 'legal'"
+        elif format == "pioneer":
+            query += " AND c.raw_scryfall_data->'legalities'->>'pioneer' = 'legal'"
+        elif format == "modern":
+            query += " AND c.raw_scryfall_data->'legalities'->>'modern' = 'legal'"
+
         if direction == "gainers":
             query += " AND (cp.price_now - pp.price_past) > 0 ORDER BY percent_change DESC LIMIT $5;"
         else:
@@ -106,6 +117,7 @@ async def get_market_movers(
             return {
                 "window_days": days,
                 "direction": direction,
+                "format": format,
                 "cached": False,
                 "results": [dict(row) for row in rows]
             }
@@ -141,6 +153,9 @@ async def search_cards(
                 c.raw_scryfall_data->'card_faces'->0->'image_uris'->>'small'
             ) AS image_uri_small,
             c.raw_scryfall_data->>'scryfall_uri' AS scryfall_uri,
+            COALESCE(c.raw_scryfall_data->'legalities'->>'standard' = 'legal', false) AS is_standard,
+            COALESCE(c.raw_scryfall_data->'legalities'->>'pioneer' = 'legal', false) AS is_pioneer,
+            COALESCE(c.raw_scryfall_data->'legalities'->>'modern' = 'legal', false) AS is_modern,
             p.price_usd,
             p.price_usd_foil,
             p.price_eur,
@@ -193,7 +208,9 @@ async def get_card_history(
                         raw_scryfall_data->'image_uris'->>'normal',
                         raw_scryfall_data->'card_faces'->0->'image_uris'->>'normal'
                     ) AS image_uri,
-                    raw_scryfall_data->>'scryfall_uri' AS scryfall_uri
+                    raw_scryfall_data->>'scryfall_uri' AS scryfall_uri,
+                    raw_scryfall_data->'legalities' AS legalities,
+                    raw_scryfall_data->>'released_at' AS released_at
                 FROM dim_cards
                 WHERE card_id = $1;
             """, card_id)

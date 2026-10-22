@@ -8,7 +8,7 @@
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
     <!-- Tailwind CSS (CDN) -->
@@ -21,13 +21,6 @@
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#f0fdf4',
-                            500: '#10b981',
-                            600: '#059669',
-                        }
                     }
                 }
             }
@@ -139,11 +132,11 @@
             <!-- Header Quick Actions -->
             <div class="flex items-center space-x-2">
                 <button 
-                    @click="fetchMovers(); fetchSummaryHighlights();" 
+                    @click="viewMode === 'matrix' ? fetchFormatMatrix() : (fetchMovers(), fetchSummaryHighlights());" 
                     class="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-all"
                     title="Refresh data"
                 >
-                    <svg class="w-4 h-4" :class="{'animate-spin text-emerald-400': loading}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4" :class="{'animate-spin text-emerald-400': loading || matrixLoading}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                     </svg>
                 </button>
@@ -161,11 +154,90 @@
         </div>
     </header>
 
+    <!-- Format Navigation Bar -->
+    <nav class="border-b border-slate-800/60 bg-slate-900/40 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3">
+            
+            <!-- Format Filter Pills -->
+            <div class="flex items-center space-x-1.5 overflow-x-auto py-0.5">
+                <!-- Standard -->
+                <button 
+                    type="button"
+                    class="px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-2 transition-all border"
+                    :class="selectedFormat === 'standard' && viewMode === 'table' ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm' : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'"
+                    @click="setViewMode('table'); setFormat('standard');"
+                >
+                    <span>Standard</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold" :class="selectedFormat === 'standard' && viewMode === 'table' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'">WOE+</span>
+                </button>
+
+                <!-- Pioneer -->
+                <button 
+                    type="button"
+                    class="px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-2 transition-all border"
+                    :class="selectedFormat === 'pioneer' && viewMode === 'table' ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-sm' : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'"
+                    @click="setViewMode('table'); setFormat('pioneer');"
+                >
+                    <span>Pioneer</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold" :class="selectedFormat === 'pioneer' && viewMode === 'table' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'">RTR+</span>
+                </button>
+
+                <!-- Modern -->
+                <button 
+                    type="button"
+                    class="px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-2 transition-all border"
+                    :class="selectedFormat === 'modern' && viewMode === 'table' ? 'bg-purple-500 text-white border-purple-400 shadow-sm' : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'"
+                    @click="setViewMode('table'); setFormat('modern');"
+                >
+                    <span>Modern</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold" :class="selectedFormat === 'modern' && viewMode === 'table' ? 'bg-slate-950/30 text-white' : 'bg-slate-800 text-slate-400'">MRD+</span>
+                </button>
+
+                <!-- All Formats -->
+                <button 
+                    type="button"
+                    class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                    :class="selectedFormat === 'all' && viewMode === 'table' ? 'bg-slate-700 text-white border-slate-600' : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200'"
+                    @click="setViewMode('table'); setFormat('all');"
+                >
+                    <span>All Cards</span>
+                </button>
+            </div>
+
+            <!-- View Mode Switcher: Table vs Format Matrix -->
+            <div class="flex items-center bg-slate-950/90 p-1 rounded-lg border border-slate-800 text-xs font-medium">
+                <button 
+                    type="button" 
+                    class="flex items-center space-x-1.5 px-3 py-1 rounded transition-colors"
+                    :class="viewMode === 'table' ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                    @click="setViewMode('table')"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Detailed Table</span>
+                </button>
+                <button 
+                    type="button" 
+                    class="flex items-center space-x-1.5 px-3 py-1 rounded transition-colors"
+                    :class="viewMode === 'matrix' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                    @click="setViewMode('matrix')"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                    </svg>
+                    <span>3-Format Matrix</span>
+                </button>
+            </div>
+
+        </div>
+    </nav>
+
     <!-- Main Dashboard Container -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-        <!-- Top Market Highlight Cards -->
-        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Top Market Highlight Cards (Format-Aware) -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" x-show="viewMode === 'table'">
             
             <!-- Top Gainer Card -->
             <div 
@@ -175,9 +247,9 @@
                 <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-all pointer-events-none"></div>
                 <div>
                     <div class="flex items-center justify-between text-xs text-slate-400 font-medium mb-1">
-                        <span class="flex items-center space-x-1">
+                        <span class="flex items-center space-x-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            <span>Biggest Market Spike</span>
+                            <span x-text="`Top ${formatInfo[selectedFormat].title} Spike`"></span>
                         </span>
                         <span class="text-[11px] font-mono text-emerald-400" x-text="`${days}D Window`"></span>
                     </div>
@@ -210,9 +282,9 @@
                 <div class="absolute -right-4 -top-4 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl group-hover:bg-rose-500/10 transition-all pointer-events-none"></div>
                 <div>
                     <div class="flex items-center justify-between text-xs text-slate-400 font-medium mb-1">
-                        <span class="flex items-center space-x-1">
+                        <span class="flex items-center space-x-1.5">
                             <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-                            <span>Biggest Market Drop</span>
+                            <span x-text="`Top ${formatInfo[selectedFormat].title} Drop`"></span>
                         </span>
                         <span class="text-[11px] font-mono text-rose-400" x-text="`${days}D Window`"></span>
                     </div>
@@ -237,21 +309,18 @@
                 </div>
             </div>
 
-            <!-- Noise Filter & Status Card -->
+            <!-- Format Definition & Filter Card -->
             <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex flex-col justify-between sm:col-span-2 lg:col-span-1">
                 <div>
                     <div class="flex items-center justify-between text-xs text-slate-400 font-medium mb-1">
-                        <span>Noise Filter Criteria</span>
-                        <span class="text-[11px] text-slate-500 font-mono">Active</span>
+                        <span class="font-semibold text-slate-200" x-text="formatInfo[selectedFormat].title"></span>
+                        <span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700" x-text="formatInfo[selectedFormat].badge"></span>
                     </div>
-                    <div class="mt-2 space-y-1 text-xs text-slate-300">
+                    <p class="text-xs text-slate-400 mt-1" x-text="formatInfo[selectedFormat].cutoff"></p>
+                    <div class="mt-3 pt-2.5 border-t border-slate-800/60 space-y-1 text-xs text-slate-300">
                         <div class="flex items-center justify-between">
                             <span class="text-slate-400">Min Base Price:</span>
                             <span class="font-mono font-medium">$1.00 USD</span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-slate-400">Min Absolute Shift:</span>
-                            <span class="font-mono font-medium">$0.50 USD</span>
                         </div>
                         <div class="flex items-center justify-between">
                             <span class="text-slate-400">Min Relative Shift:</span>
@@ -259,198 +328,436 @@
                         </div>
                     </div>
                 </div>
-                <div class="mt-4 pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
-                    <span>Last Refreshed:</span>
+                <div class="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
+                    <span>Refreshed:</span>
                     <span class="font-mono text-slate-200" x-text="lastUpdatedTime"></span>
                 </div>
             </div>
 
         </section>
 
-        <!-- Report Toolbar & Controls -->
-        <section class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-4">
-            
-            <!-- Gainers vs Losers Tabs -->
-            <div class="flex items-center bg-slate-950/80 p-1 rounded-lg border border-slate-800/80">
-                <button 
-                    type="button"
-                    class="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all"
-                    :class="direction === 'gainers' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-                    @click="setDirection('gainers')"
-                >
-                    <span>📈</span>
-                    <span>Top Gainers</span>
-                </button>
-                <button 
-                    type="button"
-                    class="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all"
-                    :class="direction === 'losers' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
-                    @click="setDirection('losers')"
-                >
-                    <span>📉</span>
-                    <span>Top Losers</span>
-                </button>
-            </div>
+        <!-- VIEW 1: Detailed Table View -->
+        <div class="space-y-6" x-show="viewMode === 'table'">
 
-            <!-- Lookback Window & Limit Controls -->
-            <div class="flex items-center flex-wrap gap-2.5">
+            <!-- Report Toolbar & Controls -->
+            <section class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-4">
                 
-                <!-- Time Range -->
-                <div class="flex items-center bg-slate-950/80 p-1 rounded-lg border border-slate-800/80 text-xs font-medium">
+                <!-- Gainers vs Losers Tabs -->
+                <div class="flex items-center bg-slate-950/80 p-1 rounded-lg border border-slate-800/80">
                     <button 
-                        @click="setDays(1)" 
-                        class="px-2.5 py-1 rounded transition-colors"
-                        :class="days === 1 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
-                    >24 Hours</button>
-                    <button 
-                        @click="setDays(7)" 
-                        class="px-2.5 py-1 rounded transition-colors"
-                        :class="days === 7 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
-                    >7 Days</button>
-                    <button 
-                        @click="setDays(30)" 
-                        class="px-2.5 py-1 rounded transition-colors"
-                        :class="days === 30 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
-                    >30 Days</button>
-                </div>
-
-                <!-- Limit Selector -->
-                <div class="flex items-center space-x-1.5 text-xs text-slate-400">
-                    <span class="hidden sm:inline">Show:</span>
-                    <select 
-                        class="bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1.5 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        x-model="limit"
-                        @change="setLimit(parseInt(limit))"
+                        type="button"
+                        class="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all"
+                        :class="direction === 'gainers' ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+                        @click="setDirection('gainers')"
                     >
-                        <option value="10">10 cards</option>
-                        <option value="15">15 cards</option>
-                        <option value="25">25 cards</option>
-                        <option value="50">50 cards</option>
-                    </select>
+                        <span>📈</span>
+                        <span>Spikes (Gainers)</span>
+                    </button>
+                    <button 
+                        type="button"
+                        class="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all"
+                        :class="direction === 'losers' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'"
+                        @click="setDirection('losers')"
+                    >
+                        <span>📉</span>
+                        <span>Crashes (Losers)</span>
+                    </button>
                 </div>
 
-            </div>
+                <!-- Lookback Window & Limit Controls -->
+                <div class="flex items-center flex-wrap gap-2.5">
+                    
+                    <!-- Time Range -->
+                    <div class="flex items-center bg-slate-950/80 p-1 rounded-lg border border-slate-800/80 text-xs font-medium">
+                        <button 
+                            @click="setDays(1)" 
+                            class="px-2.5 py-1 rounded transition-colors"
+                            :class="days === 1 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                        >24 Hours</button>
+                        <button 
+                            @click="setDays(7)" 
+                            class="px-2.5 py-1 rounded transition-colors"
+                            :class="days === 7 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                        >7 Days</button>
+                        <button 
+                            @click="setDays(30)" 
+                            class="px-2.5 py-1 rounded transition-colors"
+                            :class="days === 30 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400 hover:text-slate-200'"
+                        >30 Days</button>
+                    </div>
 
-        </section>
+                    <!-- Limit Selector -->
+                    <div class="flex items-center space-x-1.5 text-xs text-slate-400">
+                        <span class="hidden sm:inline">Show:</span>
+                        <select 
+                            class="bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1.5 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            x-model="limit"
+                            @change="setLimit(parseInt(limit))"
+                        >
+                            <option value="10">10 cards</option>
+                            <option value="15">15 cards</option>
+                            <option value="25">25 cards</option>
+                            <option value="50">50 cards</option>
+                        </select>
+                    </div>
 
-        <!-- Main Movers Data Table -->
-        <section class="bg-slate-900/40 border border-slate-800/80 rounded-xl overflow-hidden shadow-xl print-card">
-            
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm border-collapse">
-                    <thead>
-                        <tr class="border-b border-slate-800 bg-slate-900/80 text-slate-400 text-xs uppercase tracking-wider font-semibold">
-                            <th class="py-3 px-4 w-12 text-center">#</th>
-                            <th class="py-3 px-4">Card Name</th>
-                            <th class="py-3 px-3 text-center">Set</th>
-                            <th class="py-3 px-3 text-center">Rarity</th>
-                            <th class="py-3 px-4 text-right">Prior Price</th>
-                            <th class="py-3 px-4 text-right">Latest Price</th>
-                            <th class="py-3 px-4 text-right">Dollar Change</th>
-                            <th class="py-3 px-4 text-right">Percent Change</th>
-                            <th class="py-3 px-4 text-center w-24 no-print">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-800/50">
-                        
-                        <!-- Loading State -->
-                        <tr x-show="loading" x-cloak>
-                            <td colspan="9" class="py-12 text-center text-slate-400">
-                                <div class="inline-flex items-center space-x-2 text-sm">
-                                    <svg class="animate-spin w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    <span>Querying TimescaleDB market deltas...</span>
-                                </div>
-                            </td>
-                        </tr>
+                </div>
 
-                        <!-- Empty State -->
-                        <tr x-show="!loading && movers.length === 0" x-cloak>
-                            <td colspan="9" class="py-12 text-center text-slate-400">
-                                <div class="max-w-sm mx-auto space-y-1">
-                                    <p class="font-medium text-slate-200">No market movers found</p>
-                                    <p class="text-xs text-slate-400">No cards met the minimum threshold ($1.00 base, 15% shift, $0.50 delta) over the selected window.</p>
-                                </div>
-                            </td>
-                        </tr>
+            </section>
 
-                        <!-- Card Rows -->
-                        <template x-for="(card, index) in movers" :key="index">
-                            <tr 
-                                class="hover:bg-slate-800/40 transition-colors cursor-pointer group"
-                                @click="card.card_id ? inspectCardById(card.card_id, card) : null"
-                            >
-                                <!-- Rank -->
-                                <td class="py-3.5 px-4 text-center font-mono text-xs text-slate-500 group-hover:text-slate-300 font-semibold" x-text="index + 1"></td>
-                                
-                                <!-- Card Name -->
-                                <td class="py-3.5 px-4">
-                                    <div class="font-semibold text-slate-100 group-hover:text-emerald-400 transition-colors" x-text="card.name"></div>
-                                </td>
-
-                                <!-- Set Code -->
-                                <td class="py-3.5 px-3 text-center">
-                                    <span class="inline-block px-2 py-0.5 rounded font-mono text-[11px] font-bold uppercase bg-slate-800/90 text-slate-300 border border-slate-700/60" x-text="card.set_code"></span>
-                                </td>
-
-                                <!-- Rarity Badge -->
-                                <td class="py-3.5 px-3 text-center">
-                                    <span 
-                                        class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold capitalize border"
-                                        :class="getRarityBadgeClass(card.rarity)"
-                                        x-text="card.rarity"
-                                    ></span>
-                                </td>
-
-                                <!-- Past Price -->
-                                <td class="py-3.5 px-4 text-right font-mono text-slate-400" x-text="formatPrice(card.price_past)"></td>
-
-                                <!-- Current Price -->
-                                <td class="py-3.5 px-4 text-right font-mono font-bold text-slate-100" x-text="formatPrice(card.price_now)"></td>
-
-                                <!-- Absolute Change -->
-                                <td class="py-3.5 px-4 text-right font-mono font-medium">
-                                    <span 
-                                        :class="parseFloat(card.abs_change) > 0 ? 'text-emerald-400' : 'text-rose-400'"
-                                        x-text="formatDelta(card.abs_change)"
-                                    ></span>
-                                </td>
-
-                                <!-- Percent Change -->
-                                <td class="py-3.5 px-4 text-right font-mono font-bold">
-                                    <span 
-                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs"
-                                        :class="parseFloat(card.percent_change) > 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'"
-                                        x-text="formatPercent(card.percent_change)"
-                                    ></span>
-                                </td>
-
-                                <!-- Action Button -->
-                                <td class="py-3.5 px-4 text-center no-print">
-                                    <button 
-                                        type="button" 
-                                        class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-                                        @click.stop="card.card_id ? inspectCardById(card.card_id, card) : null"
-                                    >
-                                        History
-                                    </button>
+            <!-- Main Movers Data Table -->
+            <section class="bg-slate-900/40 border border-slate-800/80 rounded-xl overflow-hidden shadow-xl print-card">
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 bg-slate-900/80 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+                                <th class="py-3 px-4 w-12 text-center">#</th>
+                                <th class="py-3 px-4">Card Name</th>
+                                <th class="py-3 px-3 text-center">Set</th>
+                                <th class="py-3 px-3 text-center">Rarity</th>
+                                <th class="py-3 px-3 text-center">Formats</th>
+                                <th class="py-3 px-4 text-right">Prior Price</th>
+                                <th class="py-3 px-4 text-right">Latest Price</th>
+                                <th class="py-3 px-4 text-right">Dollar Change</th>
+                                <th class="py-3 px-4 text-right">Percent Change</th>
+                                <th class="py-3 px-4 text-center w-24 no-print">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            
+                            <!-- Loading State -->
+                            <tr x-show="loading" x-cloak>
+                                <td colspan="10" class="py-12 text-center text-slate-400">
+                                    <div class="inline-flex items-center space-x-2 text-sm">
+                                        <svg class="animate-spin w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>Querying format-specific market deltas...</span>
+                                    </div>
                                 </td>
                             </tr>
+
+                            <!-- Empty State -->
+                            <tr x-show="!loading && movers.length === 0" x-cloak>
+                                <td colspan="10" class="py-12 text-center text-slate-400">
+                                    <div class="max-w-sm mx-auto space-y-1">
+                                        <p class="font-medium text-slate-200">No market movers found</p>
+                                        <p class="text-xs text-slate-400">No <span class="capitalize font-semibold text-slate-300" x-text="selectedFormat"></span> cards met the threshold ($1.00 base, 15% shift, $0.50 delta) over the selected window.</p>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Card Rows -->
+                            <template x-for="(card, index) in movers" :key="index">
+                                <tr 
+                                    class="hover:bg-slate-800/40 transition-colors cursor-pointer group"
+                                    @click="card.card_id ? inspectCardById(card.card_id, card) : null"
+                                >
+                                    <!-- Rank -->
+                                    <td class="py-3.5 px-4 text-center font-mono text-xs text-slate-500 group-hover:text-slate-300 font-semibold" x-text="index + 1"></td>
+                                    
+                                    <!-- Card Name -->
+                                    <td class="py-3.5 px-4">
+                                        <div class="font-semibold text-slate-100 group-hover:text-emerald-400 transition-colors" x-text="card.name"></div>
+                                    </td>
+
+                                    <!-- Set Code -->
+                                    <td class="py-3.5 px-3 text-center">
+                                        <span class="inline-block px-2 py-0.5 rounded font-mono text-[11px] font-bold uppercase bg-slate-800/90 text-slate-300 border border-slate-700/60" x-text="card.set_code"></span>
+                                    </td>
+
+                                    <!-- Rarity Badge -->
+                                    <td class="py-3.5 px-3 text-center">
+                                        <span 
+                                            class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold capitalize border"
+                                            :class="getRarityBadgeClass(card.rarity)"
+                                            x-text="card.rarity"
+                                        ></span>
+                                    </td>
+
+                                    <!-- Format Legality Pills -->
+                                    <td class="py-3.5 px-3 text-center">
+                                        <div class="flex items-center justify-center space-x-1 font-mono text-[10px] font-bold">
+                                            <span x-show="card.is_standard" class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" title="Standard Legal">STD</span>
+                                            <span x-show="card.is_pioneer" class="px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20" title="Pioneer Legal">PIO</span>
+                                            <span x-show="card.is_modern" class="px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20" title="Modern Legal">MOD</span>
+                                        </div>
+                                    </td>
+
+                                    <!-- Past Price -->
+                                    <td class="py-3.5 px-4 text-right font-mono text-slate-400" x-text="formatPrice(card.price_past)"></td>
+
+                                    <!-- Current Price -->
+                                    <td class="py-3.5 px-4 text-right font-mono font-bold text-slate-100" x-text="formatPrice(card.price_now)"></td>
+
+                                    <!-- Absolute Change -->
+                                    <td class="py-3.5 px-4 text-right font-mono font-medium">
+                                        <span 
+                                            :class="parseFloat(card.abs_change) > 0 ? 'text-emerald-400' : 'text-rose-400'"
+                                            x-text="formatDelta(card.abs_change)"
+                                        ></span>
+                                    </td>
+
+                                    <!-- Percent Change -->
+                                    <td class="py-3.5 px-4 text-right font-mono font-bold">
+                                        <span 
+                                            class="inline-flex items-center px-2 py-0.5 rounded text-xs"
+                                            :class="parseFloat(card.percent_change) > 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'"
+                                            x-text="formatPercent(card.percent_change)"
+                                        ></span>
+                                    </td>
+
+                                    <!-- Action Button -->
+                                    <td class="py-3.5 px-4 text-center no-print">
+                                        <button 
+                                            type="button" 
+                                            class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                                            @click.stop="card.card_id ? inspectCardById(card.card_id, card) : null"
+                                        >
+                                            History
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Footer summary line -->
+                <div class="px-4 py-3 bg-slate-900/60 border-t border-slate-800/80 text-xs text-slate-400 flex items-center justify-between">
+                    <span>Showing top <strong class="text-slate-200" x-text="movers.length"></strong> <span class="capitalize" x-text="selectedFormat"></span> <span x-text="direction"></span></span>
+                    <span class="font-mono text-[11px] text-slate-500">FastAPI &bull; Redis Cache &bull; TimescaleDB</span>
+                </div>
+
+            </section>
+
+        </div>
+
+        <!-- VIEW 2: Side-by-Side 3-Format Matrix View -->
+        <div class="space-y-6" x-show="viewMode === 'matrix'" x-cloak>
+            
+            <!-- Time Window Switcher for Matrix -->
+            <div class="flex items-center justify-between bg-slate-900/60 border border-slate-800/80 rounded-xl p-3">
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm font-semibold text-slate-200">Format Comparison Matrix</span>
+                    <span class="text-xs text-slate-400">• Standard, Pioneer, and Modern side-by-side</span>
+                </div>
+                <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-medium">
+                    <button @click="setDays(1)" class="px-2.5 py-1 rounded" :class="days === 1 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400'">24h</button>
+                    <button @click="setDays(7)" class="px-2.5 py-1 rounded" :class="days === 7 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400'">7d</button>
+                    <button @click="setDays(30)" class="px-2.5 py-1 rounded" :class="days === 30 ? 'bg-slate-800 text-white font-semibold' : 'text-slate-400'">30d</button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner for Matrix -->
+            <div x-show="matrixLoading" class="py-16 text-center text-slate-400">
+                <div class="inline-flex items-center space-x-2 text-sm">
+                    <svg class="animate-spin w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Loading multi-format movers...</span>
+                </div>
+            </div>
+
+            <!-- 3 Format Columns Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5" x-show="!matrixLoading">
+
+                <!-- 1. Standard Column -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <span class="font-bold text-white text-base">Standard</span>
+                                <span class="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">WOE+</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Wilds of Eldraine to today</p>
+                        </div>
+                        <button 
+                            @click="setFormat('standard'); setViewMode('table');" 
+                            class="text-xs text-emerald-400 hover:text-emerald-300 font-medium"
+                        >View All &rarr;</button>
+                    </div>
+
+                    <!-- Standard Gainers -->
+                    <div class="space-y-2">
+                        <div class="text-xs font-semibold text-emerald-400 flex items-center space-x-1">
+                            <span>📈 Top Spikes</span>
+                        </div>
+                        <template x-for="c in matrixData.standard.gainers" :key="c.card_id">
+                            <div 
+                                class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60 hover:border-slate-700 cursor-pointer text-xs"
+                                @click="inspectCardById(c.card_id, c)"
+                            >
+                                <div class="truncate pr-2">
+                                    <div class="font-semibold text-slate-200 truncate" x-text="c.name"></div>
+                                    <div class="text-[10px] text-slate-400 font-mono uppercase" x-text="c.set_code"></div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <div class="font-mono font-bold text-slate-100" x-text="formatPrice(c.price_now)"></div>
+                                    <div class="font-mono text-emerald-400 text-[11px]" x-text="formatPercent(c.percent_change)"></div>
+                                </div>
+                            </div>
                         </template>
+                        <div x-show="matrixData.standard.gainers.length === 0" class="text-xs text-slate-500 italic py-2 text-center">No spikes found</div>
+                    </div>
 
-                    </tbody>
-                </table>
+                    <!-- Standard Losers -->
+                    <div class="space-y-2 pt-2 border-t border-slate-800/60">
+                        <div class="text-xs font-semibold text-rose-400 flex items-center space-x-1">
+                            <span>📉 Top Drops</span>
+                        </div>
+                        <template x-for="c in matrixData.standard.losers" :key="c.card_id">
+                            <div 
+                                class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60 hover:border-slate-700 cursor-pointer text-xs"
+                                @click="inspectCardById(c.card_id, c)"
+                            >
+                                <div class="truncate pr-2">
+                                    <div class="font-semibold text-slate-200 truncate" x-text="c.name"></div>
+                                    <div class="text-[10px] text-slate-400 font-mono uppercase" x-text="c.set_code"></div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <div class="font-mono font-bold text-slate-100" x-text="formatPrice(c.price_now)"></div>
+                                    <div class="font-mono text-rose-400 text-[11px]" x-text="formatPercent(c.percent_change)"></div>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="matrixData.standard.losers.length === 0" class="text-xs text-slate-500 italic py-2 text-center">No drops found</div>
+                    </div>
+                </div>
+
+                <!-- 2. Pioneer Column -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <span class="font-bold text-white text-base">Pioneer</span>
+                                <span class="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20">RTR+</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Return to Ravnica to today</p>
+                        </div>
+                        <button 
+                            @click="setFormat('pioneer'); setViewMode('table');" 
+                            class="text-xs text-sky-400 hover:text-sky-300 font-medium"
+                        >View All &rarr;</button>
+                    </div>
+
+                    <!-- Pioneer Gainers -->
+                    <div class="space-y-2">
+                        <div class="text-xs font-semibold text-emerald-400 flex items-center space-x-1">
+                            <span>📈 Top Spikes</span>
+                        </div>
+                        <template x-for="c in matrixData.pioneer.gainers" :key="c.card_id">
+                            <div 
+                                class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60 hover:border-slate-700 cursor-pointer text-xs"
+                                @click="inspectCardById(c.card_id, c)"
+                            >
+                                <div class="truncate pr-2">
+                                    <div class="font-semibold text-slate-200 truncate" x-text="c.name"></div>
+                                    <div class="text-[10px] text-slate-400 font-mono uppercase" x-text="c.set_code"></div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <div class="font-mono font-bold text-slate-100" x-text="formatPrice(c.price_now)"></div>
+                                    <div class="font-mono text-emerald-400 text-[11px]" x-text="formatPercent(c.percent_change)"></div>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="matrixData.pioneer.gainers.length === 0" class="text-xs text-slate-500 italic py-2 text-center">No spikes found</div>
+                    </div>
+
+                    <!-- Pioneer Losers -->
+                    <div class="space-y-2 pt-2 border-t border-slate-800/60">
+                        <div class="text-xs font-semibold text-rose-400 flex items-center space-x-1">
+                            <span>📉 Top Drops</span>
+                        </div>
+                        <template x-for="c in matrixData.pioneer.losers" :key="c.card_id">
+                            <div 
+                                class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60 hover:border-slate-700 cursor-pointer text-xs"
+                                @click="inspectCardById(c.card_id, c)"
+                            >
+                                <div class="truncate pr-2">
+                                    <div class="font-semibold text-slate-200 truncate" x-text="c.name"></div>
+                                    <div class="text-[10px] text-slate-400 font-mono uppercase" x-text="c.set_code"></div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <div class="font-mono font-bold text-slate-100" x-text="formatPrice(c.price_now)"></div>
+                                    <div class="font-mono text-rose-400 text-[11px]" x-text="formatPercent(c.percent_change)"></div>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="matrixData.pioneer.losers.length === 0" class="text-xs text-slate-500 italic py-2 text-center">No drops found</div>
+                    </div>
+                </div>
+
+                <!-- 3. Modern Column -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <span class="font-bold text-white text-base">Modern</span>
+                                <span class="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">MRD+</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Mirrodin to today</p>
+                        </div>
+                        <button 
+                            @click="setFormat('modern'); setViewMode('table');" 
+                            class="text-xs text-purple-400 hover:text-purple-300 font-medium"
+                        >View All &rarr;</button>
+                    </div>
+
+                    <!-- Modern Gainers -->
+                    <div class="space-y-2">
+                        <div class="text-xs font-semibold text-emerald-400 flex items-center space-x-1">
+                            <span>📈 Top Spikes</span>
+                        </div>
+                        <template x-for="c in matrixData.modern.gainers" :key="c.card_id">
+                            <div 
+                                class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60 hover:border-slate-700 cursor-pointer text-xs"
+                                @click="inspectCardById(c.card_id, c)"
+                            >
+                                <div class="truncate pr-2">
+                                    <div class="font-semibold text-slate-200 truncate" x-text="c.name"></div>
+                                    <div class="text-[10px] text-slate-400 font-mono uppercase" x-text="c.set_code"></div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <div class="font-mono font-bold text-slate-100" x-text="formatPrice(c.price_now)"></div>
+                                    <div class="font-mono text-emerald-400 text-[11px]" x-text="formatPercent(c.percent_change)"></div>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="matrixData.modern.gainers.length === 0" class="text-xs text-slate-500 italic py-2 text-center">No spikes found</div>
+                    </div>
+
+                    <!-- Modern Losers -->
+                    <div class="space-y-2 pt-2 border-t border-slate-800/60">
+                        <div class="text-xs font-semibold text-rose-400 flex items-center space-x-1">
+                            <span>📉 Top Drops</span>
+                        </div>
+                        <template x-for="c in matrixData.modern.losers" :key="c.card_id">
+                            <div 
+                                class="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60 hover:border-slate-700 cursor-pointer text-xs"
+                                @click="inspectCardById(c.card_id, c)"
+                            >
+                                <div class="truncate pr-2">
+                                    <div class="font-semibold text-slate-200 truncate" x-text="c.name"></div>
+                                    <div class="text-[10px] text-slate-400 font-mono uppercase" x-text="c.set_code"></div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <div class="font-mono font-bold text-slate-100" x-text="formatPrice(c.price_now)"></div>
+                                    <div class="font-mono text-rose-400 text-[11px]" x-text="formatPercent(c.percent_change)"></div>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="matrixData.modern.losers.length === 0" class="text-xs text-slate-500 italic py-2 text-center">No drops found</div>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- Footer summary line -->
-            <div class="px-4 py-3 bg-slate-900/60 border-t border-slate-800/80 text-xs text-slate-400 flex items-center justify-between">
-                <span>Showing top <strong class="text-slate-200" x-text="movers.length"></strong> <span x-text="direction"></span></span>
-                <span class="font-mono text-[11px] text-slate-500">FastAPI &bull; Redis Cache &bull; TimescaleDB</span>
-            </div>
-
-        </section>
+        </div>
 
     </main>
 
@@ -498,7 +805,27 @@
                             <span class="font-mono uppercase font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700" x-text="selectedCard?.set_code"></span>
                             <span class="capitalize px-2 py-0.5 rounded border" :class="getRarityBadgeClass(selectedCard?.rarity)" x-text="selectedCard?.rarity"></span>
                             <span class="text-slate-400" x-show="selectedCard?.collector_number" x-text="`#${selectedCard?.collector_number}`"></span>
+                            <span class="text-slate-500" x-show="selectedCard?.released_at" x-text="`• Released ${selectedCard?.released_at}`"></span>
                         </div>
+                        
+                        <!-- Format Legality Pills in Modal -->
+                        <div class="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span 
+                                class="px-2 py-0.5 rounded font-mono font-semibold border"
+                                :class="selectedCard?.legalities?.standard === 'legal' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800/40 text-slate-500 border-slate-800'"
+                            >Standard: <span x-text="selectedCard?.legalities?.standard === 'legal' ? 'Legal' : 'Not Legal'"></span></span>
+                            
+                            <span 
+                                class="px-2 py-0.5 rounded font-mono font-semibold border"
+                                :class="selectedCard?.legalities?.pioneer === 'legal' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' : 'bg-slate-800/40 text-slate-500 border-slate-800'"
+                            >Pioneer: <span x-text="selectedCard?.legalities?.pioneer === 'legal' ? 'Legal' : 'Not Legal'"></span></span>
+                            
+                            <span 
+                                class="px-2 py-0.5 rounded font-mono font-semibold border"
+                                :class="selectedCard?.legalities?.modern === 'legal' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-slate-800/40 text-slate-500 border-slate-800'"
+                            >Modern: <span x-text="selectedCard?.legalities?.modern === 'legal' ? 'Legal' : 'Not Legal'"></span></span>
+                        </div>
+
                         <div class="mt-2.5 flex items-center space-x-3 text-xs">
                             <a 
                                 :href="selectedCard?.scryfall_uri || `https://scryfall.com/search?q=${encodeURIComponent(selectedCard?.name || '')}`" 
@@ -605,4 +932,3 @@
 
 </body>
 </html>
-
