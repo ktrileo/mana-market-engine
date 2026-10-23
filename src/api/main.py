@@ -233,10 +233,6 @@ async def get_card_history(
             if not card_row:
                 raise HTTPException(status_code=404, detail=f"Card with ID '{card_id}' not found")
 
-            # Skip foil-only cards: no non-foil price to track
-            if card_row.get("price_usd") is None:
-                raise HTTPException(status_code=404, detail=f"Card with ID '{card_id}' is foil-only and not tracked")
-
             history_rows = await conn.fetch("""
                 SELECT
                     timestamp,
@@ -249,6 +245,10 @@ async def get_card_history(
                   AND timestamp >= NOW() - $2::interval
                 ORDER BY timestamp ASC;
             """, card_id, timedelta(days=days))
+
+            # Skip foil-only cards: no non-foil price history to track
+            if not any(h.get("price_usd") is not None for h in history_rows):
+                raise HTTPException(status_code=404, detail=f"Card with ID '{card_id}' is foil-only and not tracked")
 
             history_list = [dict(r) for r in history_rows]
             valid_usd_prices = [float(h["price_usd"]) for h in history_list if h.get("price_usd") is not None]
