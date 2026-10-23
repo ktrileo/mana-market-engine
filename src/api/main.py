@@ -91,17 +91,23 @@ async def get_market_movers(
     async def fetch_movers():
         # Build the format legality clause dynamically.
         # Scryfall legalities values: "legal", "not_legal", "banned", "restricted"
-        # Each format excludes the other two so results are mutually exclusive.
+        # Priority: Standard > Pioneer > Modern. A card appears only in the
+        # highest format it's legal in, so results are mutually exclusive.
         format_clause = ""
         if format != "all":
-            excluded_formats = {
-                "standard": ["pioneer", "modern"],
-                "pioneer": ["standard", "modern"],
-                "modern": ["standard", "pioneer"],
-            }
-            format_clause = f"AND c.raw_scryfall_data->'legalities'->>'{ format }' = 'legal'"
-            for excluded in excluded_formats.get(format, []):
-                format_clause += f" AND c.raw_scryfall_data->'legalities'->>'{ excluded }' != 'legal'"
+            if format == "standard":
+                format_clause = f"AND c.raw_scryfall_data->'legalities'->>'standard' = 'legal'"
+            elif format == "pioneer":
+                format_clause = (
+                    f"AND c.raw_scryfall_data->'legalities'->>'pioneer' = 'legal'"
+                    f" AND c.raw_scryfall_data->'legalities'->>'standard' != 'legal'"
+                )
+            elif format == "modern":
+                format_clause = (
+                    f"AND c.raw_scryfall_data->'legalities'->>'modern' = 'legal'"
+                    f" AND c.raw_scryfall_data->'legalities'->>'standard' != 'legal'"
+                    f" AND c.raw_scryfall_data->'legalities'->>'pioneer' != 'legal'"
+                )
 
         query = f"""
         WITH current_prices AS (
