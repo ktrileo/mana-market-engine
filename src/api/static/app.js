@@ -5,7 +5,6 @@
 
 // MTG format metadata: legality key (sent to API), display label, and date range info.
 const FORMATS = [
-    { key: 'all',      label: 'All Cards',  icon: '🌐', range: 'Every set' },
     { key: 'standard', label: 'Standard',   icon: '⭐', range: 'WOE → Present' },
     { key: 'pioneer',  label: 'Pioneer',    icon: '🏔️', range: 'RTR → Present' },
     { key: 'modern',   label: 'Modern',     icon: '⚙️', range: 'MRD → Present' },
@@ -15,7 +14,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('dashboardApp', () => ({
         // Format State
         formats: FORMATS,
-        activeFormat: 'all',
+        activeFormat: 'standard',
 
         // Movers State
         direction: 'gainers',
