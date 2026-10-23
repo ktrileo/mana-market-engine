@@ -26,6 +26,11 @@ def _is_excluded_card(card: dict) -> bool:
     if frame not in ("1993", "1997", "2003", "2015"):
         return True
 
+    # Only 3-character set codes (no promo/set codes longer than 3)
+    set_code = card.get("set") or ""
+    if len(set_code) != 3:
+        return True
+
     border_color = card.get("border_color")
     if border_color not in ("black", "white", "silver"):
         return True

@@ -19,6 +19,7 @@ CACHE_TTL_SECONDS = 86400  # 24 hours (synchronized with daily bulk ingestion sc
 EXCLUDED_CARD_CLAUSE = """
     AND (c.raw_scryfall_data->>'type_line' IS NULL
          OR c.raw_scryfall_data->>'type_line' NOT ILIKE 'Basic Land%')
+    AND LENGTH(c.set_code) = 3
     AND c.raw_scryfall_data->>'frame' IN ('1993', '1997', '2003', '2015')
     AND c.raw_scryfall_data->>'border_color' IN ('black', 'white', 'silver')
     AND COALESCE(c.raw_scryfall_data->>'is_full_art', 'false') != 'true'
