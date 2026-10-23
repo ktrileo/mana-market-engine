@@ -20,12 +20,25 @@ def _is_excluded_card(card: dict) -> bool:
     type_line = card.get("type_line") or ""
     if type_line.startswith("Basic Land"):
         return True
-    return bool(
-        card.get("is_full_art")
-        or card.get("is_textless")
-        or card.get("is_story_spotlight")
-        or card.get("is_timeshifted")
-    )
+
+    # Scryfall is:default: traditional frame, traditional border, no special treatments
+    frame = card.get("frame")
+    if frame not in ("1993", "1997", "2003", "2015"):
+        return True
+
+    border_color = card.get("border_color")
+    if border_color not in ("black", "white", "silver"):
+        return True
+
+    frame_effects = card.get("frame_effects") or []
+    special_effects = {"showcase", "extendedart", "extended", "colortreatment"}
+    if any(effect in special_effects for effect in frame_effects):
+        return True
+
+    if card.get("is_full_art") or card.get("is_textless") or card.get("is_story_spotlight"):
+        return True
+
+    return False
 
 
 def flush_to_db(cursor, cards_batch, prices_batch):

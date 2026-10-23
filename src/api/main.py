@@ -19,11 +19,15 @@ CACHE_TTL_SECONDS = 86400  # 24 hours (synchronized with daily bulk ingestion sc
 EXCLUDED_CARD_CLAUSE = """
     AND (c.raw_scryfall_data->>'type_line' IS NULL
          OR c.raw_scryfall_data->>'type_line' NOT ILIKE 'Basic Land%')
-    AND NOT (
-        COALESCE(c.raw_scryfall_data->>'is_full_art', 'false') = 'true'
-        OR COALESCE(c.raw_scryfall_data->>'is_textless', 'false') = 'true'
-        OR COALESCE(c.raw_scryfall_data->>'is_story_spotlight', 'false') = 'true'
-        OR COALESCE(c.raw_scryfall_data->>'is_timeshifted', 'false') = 'true'
+    AND c.raw_scryfall_data->>'frame' IN ('1993', '1997', '2003', '2015')
+    AND c.raw_scryfall_data->>'border_color' IN ('black', 'white', 'silver')
+    AND NOT c.raw_scryfall_data->>'is_full_art' = 'true'
+    AND NOT c.raw_scryfall_data->>'is_textless' = 'true'
+    AND NOT c.raw_scryfall_data->>'is_story_spotlight' = 'true'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements_text(COALESCE(c.raw_scryfall_data->'frame_effects', '[]'::jsonb)) AS fe(eff)
+        WHERE fe.eff IN ('showcase', 'extendedart', 'extended', 'colortreatment')
     )
 """
 
