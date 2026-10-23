@@ -129,6 +129,10 @@ def run_ingestion():
             
             # EXTRACT & BRANCH: Prices
             prices = card.get("prices", {})
+            # Skip foil-only cards: no non-foil price to track
+            if prices.get("usd") is None:
+                continue
+
             prices_to_insert.append((
                 timestamp_now,
                 card_id,

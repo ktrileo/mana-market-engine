@@ -185,6 +185,7 @@ async def search_cards(
         ) p ON true
         WHERE c.name ILIKE '%' || $1 || '%'
         { EXCLUDED_CARD_CLAUSE }
+        AND p.price_usd IS NOT NULL
         ORDER BY
             CASE
                 WHEN LOWER(c.name) = LOWER($1) THEN 0
@@ -231,6 +232,10 @@ async def get_card_history(
 
             if not card_row:
                 raise HTTPException(status_code=404, detail=f"Card with ID '{card_id}' not found")
+
+            # Skip foil-only cards: no non-foil price to track
+            if card_row.get("price_usd") is None:
+                raise HTTPException(status_code=404, detail=f"Card with ID '{card_id}' is foil-only and not tracked")
 
             history_rows = await conn.fetch("""
                 SELECT
