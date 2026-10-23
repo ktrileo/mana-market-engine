@@ -15,6 +15,19 @@ HEADERS = {
     "Accept": "application/json;q=0.9,*/*;q=0.8"
 }
 
+def _is_excluded_card(card: dict) -> bool:
+    """Return True for basic lands and non-default art printings (Scryfall is:default)."""
+    type_line = card.get("type_line") or ""
+    if type_line.startswith("Basic Land"):
+        return True
+    return bool(
+        card.get("is_full_art")
+        or card.get("is_textless")
+        or card.get("is_story_spotlight")
+        or card.get("is_timeshifted")
+    )
+
+
 def flush_to_db(cursor, cards_batch, prices_batch):
     """Executes bulk batch inserts to PostgreSQL."""
     
@@ -82,7 +95,10 @@ def run_ingestion():
         for line in gz:
             card = json.loads(line)
             card_id = card.get("id")
-            
+
+            if _is_excluded_card(card):
+                continue
+
             # EXTRACT & BRANCH: Metadata
             if card_id not in existing_cards:
                 cards_to_insert.append((

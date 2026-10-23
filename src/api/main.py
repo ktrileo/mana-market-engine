@@ -16,6 +16,17 @@ MIN_PERCENT_CHANGE = 15.0
 MIN_ABSOLUTE_CHANGE = 0.50
 CACHE_TTL_SECONDS = 86400  # 24 hours (synchronized with daily bulk ingestion schedule)
 
+EXCLUDED_CARD_CLAUSE = """
+    AND (c.raw_scryfall_data->>'type_line' IS NULL
+         OR c.raw_scryfall_data->>'type_line' NOT ILIKE 'Basic Land%')
+    AND NOT (
+        COALESCE(c.raw_scryfall_data->>'is_full_art', 'false') = 'true'
+        OR COALESCE(c.raw_scryfall_data->>'is_textless', 'false') = 'true'
+        OR COALESCE(c.raw_scryfall_data->>'is_story_spotlight', 'false') = 'true'
+        OR COALESCE(c.raw_scryfall_data->>'is_timeshifted', 'false') = 'true'
+    )
+"""
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -100,6 +111,7 @@ async def get_market_movers(
         WHERE pp.price_past >= $2
           AND ABS(cp.price_now - pp.price_past) >= $3
           AND ABS((cp.price_now - pp.price_past) / pp.price_past * 100) >= $4
+          { EXCLUDED_CARD_CLAUSE }
           { format_clause }
         """
         if direction == "gainers":
@@ -168,6 +180,7 @@ async def search_cards(
             LIMIT 1
         ) p ON true
         WHERE c.name ILIKE '%' || $1 || '%'
+        { EXCLUDED_CARD_CLAUSE }
         ORDER BY
             CASE
                 WHEN LOWER(c.name) = LOWER($1) THEN 0
