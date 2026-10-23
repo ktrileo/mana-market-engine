@@ -209,14 +209,14 @@ document.addEventListener('alpine:init', () => {
                 this.chartInstance = null;
             }
 
-            const validPoints = history.filter(h => h.price_usd !== null && h.price_usd !== undefined);
+            const validPoints = history.filter(h => h.price_eur !== null && h.price_eur !== undefined);
             if (validPoints.length === 0) return;
 
             const labels = validPoints.map(p => {
                 const d = new Date(p.timestamp);
                 return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
             });
-            const dataValues = validPoints.map(p => parseFloat(p.price_usd));
+            const dataValues = validPoints.map(p => parseFloat(p.price_eur));
 
             const isPositive = dataValues.length > 1 && dataValues[dataValues.length - 1] >= dataValues[0];
             const lineColor = isPositive ? '#10b981' : '#f43f5e';
@@ -232,7 +232,7 @@ document.addEventListener('alpine:init', () => {
                 data: {
                     labels,
                     datasets: [{
-                        label: 'Market Price (USD)',
+                        label: 'Market Price (EUR)',
                         data: dataValues,
                         borderColor: lineColor,
                         backgroundColor: gradient,
@@ -261,7 +261,7 @@ document.addEventListener('alpine:init', () => {
                             padding: 10,
                             displayColors: false,
                             callbacks: {
-                                label: (ctx) => `$${parseFloat(ctx.parsed.y).toFixed(2)} USD`
+                                label: (ctx) => `€${parseFloat(ctx.parsed.y).toFixed(2)} EUR`
                             }
                         }
                     },
@@ -275,7 +275,7 @@ document.addEventListener('alpine:init', () => {
                             ticks: {
                                 color: '#64748b',
                                 font: { size: 11 },
-                                callback: (val) => `$${parseFloat(val).toFixed(2)}`
+                                callback: (val) => `€${parseFloat(val).toFixed(2)}`
                             }
                         }
                     }
@@ -294,13 +294,13 @@ document.addEventListener('alpine:init', () => {
         // --- Formatting Helpers ---
         formatPrice(val) {
             if (val === null || val === undefined || isNaN(val)) return 'N/A';
-            return `$${parseFloat(val).toFixed(2)}`;
+            return `€${parseFloat(val).toFixed(2)}`;
         },
 
         formatDelta(val) {
             if (val === null || val === undefined || isNaN(val)) return 'N/A';
             const num = parseFloat(val);
-            return `${num > 0 ? '+' : ''}$${num.toFixed(2)}`;
+            return `${num > 0 ? '+' : ''}€${num.toFixed(2)}`;
         },
 
         formatPercent(val) {

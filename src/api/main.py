@@ -96,14 +96,14 @@ async def get_market_movers(
 
         query = f"""
         WITH current_prices AS (
-            SELECT DISTINCT ON (card_id) card_id, price_usd AS price_now
-            FROM fact_card_prices WHERE price_usd IS NOT NULL
+            SELECT DISTINCT ON (card_id) card_id, price_eur AS price_now
+            FROM fact_card_prices WHERE price_eur IS NOT NULL
             ORDER BY card_id, timestamp DESC
         ),
         past_prices AS (
-            SELECT DISTINCT ON (card_id) card_id, price_usd AS price_past
+            SELECT DISTINCT ON (card_id) card_id, price_eur AS price_past
             FROM fact_card_prices
-            WHERE price_usd IS NOT NULL AND timestamp <= NOW() - $1::interval
+            WHERE price_eur IS NOT NULL AND timestamp <= NOW() - $1::interval
             ORDER BY card_id, timestamp DESC
         )
         SELECT c.card_id, c.name, c.set_code, c.rarity, cp.price_now, pp.price_past,
@@ -171,13 +171,13 @@ async def search_cards(
                 c.raw_scryfall_data->'card_faces'->0->'image_uris'->>'small'
             ) AS image_uri_small,
             c.raw_scryfall_data->>'scryfall_uri' AS scryfall_uri,
-            p.price_usd,
-            p.price_usd_foil,
             p.price_eur,
+            p.price_usd_foil,
+            p.price_usd,
             p.timestamp AS price_updated_at
         FROM dim_cards c
         LEFT JOIN LATERAL (
-            SELECT price_usd, price_usd_foil, price_eur, timestamp
+            SELECT price_eur, price_usd_foil, price_usd, timestamp
             FROM fact_card_prices fp
             WHERE fp.card_id = c.card_id
             ORDER BY fp.timestamp DESC
@@ -185,7 +185,7 @@ async def search_cards(
         ) p ON true
         WHERE c.name ILIKE '%' || $1 || '%'
         { EXCLUDED_CARD_CLAUSE }
-        AND p.price_usd IS NOT NULL
+        AND p.price_eur IS NOT NULL
         ORDER BY
             CASE
                 WHEN LOWER(c.name) = LOWER($1) THEN 0
@@ -237,36 +237,36 @@ async def get_card_history(
                 SELECT
                     timestamp,
                     vendor,
-                    price_usd,
+                    price_eur,
                     price_usd_foil,
-                    price_eur
+                    price_usd
                 FROM fact_card_prices
                 WHERE card_id = $1
                   AND timestamp >= NOW() - $2::interval
                 ORDER BY timestamp ASC;
             """, card_id, timedelta(days=days))
 
-            # Skip foil-only cards: no non-foil price history to track
-            if not any(h.get("price_usd") is not None for h in history_rows):
+            # Skip foil-only cards: no non-foil EUR price history to track
+            if not any(h.get("price_eur") is not None for h in history_rows):
                 raise HTTPException(status_code=404, detail=f"Card with ID '{card_id}' is foil-only and not tracked")
 
             history_list = [dict(r) for r in history_rows]
-            valid_usd_prices = [float(h["price_usd"]) for h in history_list if h.get("price_usd") is not None]
+            valid_eur_prices = [float(h["price_eur"]) for h in history_list if h.get("price_eur") is not None]
 
             stats = None
-            if valid_usd_prices:
-                oldest_usd = valid_usd_prices[0]
-                current_usd = valid_usd_prices[-1]
-                abs_diff = round(current_usd - oldest_usd, 2)
-                pct_diff = round((abs_diff / oldest_usd * 100), 2) if oldest_usd > 0 else 0.0
+            if valid_eur_prices:
+                oldest_eur = valid_eur_prices[0]
+                current_eur = valid_eur_prices[-1]
+                abs_diff = round(current_eur - oldest_eur, 2)
+                pct_diff = round((abs_diff / oldest_eur * 100), 2) if oldest_eur > 0 else 0.0
                 stats = {
-                    "current_price_usd": current_usd,
-                    "oldest_price_usd": oldest_usd,
-                    "abs_change_usd": abs_diff,
-                    "percent_change_usd": pct_diff,
-                    "min_price_usd": min(valid_usd_prices),
-                    "max_price_usd": max(valid_usd_prices),
-                    "data_points": len(valid_usd_prices)
+                    "current_price_eur": current_eur,
+                    "oldest_price_eur": oldest_eur,
+                    "abs_change_eur": abs_diff,
+                    "percent_change_eur": pct_diff,
+                    "min_price_eur": min(valid_eur_prices),
+                    "max_price_eur": max(valid_eur_prices),
+                    "data_points": len(valid_eur_prices)
                 }
 
             return {
