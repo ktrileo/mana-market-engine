@@ -21,9 +21,9 @@ EXCLUDED_CARD_CLAUSE = """
          OR c.raw_scryfall_data->>'type_line' NOT ILIKE 'Basic Land%')
     AND c.raw_scryfall_data->>'frame' IN ('1993', '1997', '2003', '2015')
     AND c.raw_scryfall_data->>'border_color' IN ('black', 'white', 'silver')
-    AND NOT c.raw_scryfall_data->>'is_full_art' = 'true'
-    AND NOT c.raw_scryfall_data->>'is_textless' = 'true'
-    AND NOT c.raw_scryfall_data->>'is_story_spotlight' = 'true'
+    AND COALESCE(c.raw_scryfall_data->>'is_full_art', 'false') != 'true'
+    AND COALESCE(c.raw_scryfall_data->>'is_textless', 'false') != 'true'
+    AND COALESCE(c.raw_scryfall_data->>'is_story_spotlight', 'false') != 'true'
     AND NOT EXISTS (
         SELECT 1
         FROM jsonb_array_elements_text(COALESCE(c.raw_scryfall_data->'frame_effects', '[]'::jsonb)) AS fe(eff)
