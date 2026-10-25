@@ -113,10 +113,14 @@ async def get_market_movers(
                     f" AND UPPER(c.set_code) IN ({set_codes_clause})"
                 )
             elif format == "modern":
+                # Modern sets (non-Standard/Pioneer, to avoid reprints already in those sections)
+                modern_sets = ("fra", "hob", "msh", "sos", "tmt", "ecl", "tla", "spm", "eoe", "fin", "tdm", "dft", "fdn", "dsk", "blb", "acr", "mh3", "otj", "mkm", "lci", "woe", "ltr", "mat", "mom", "one", "bro", "dmu", "snc", "neo", "vow", "mid", "afr", "mh2", "stx", "khm", "znr", "m21", "iko", "thb", "eld", "m20", "mh1", "war", "rna", "grn", "m19", "dom", "rix", "xln", "hou", "akh", "aer", "kld", "emn", "soi", "ogw", "bfz", "ori", "dtk", "frf", "ktk", "m15", "jou", "bng", "ths", "m14", "dgm", "gtc", "rtr", "m13", "avr", "dka", "isd", "m12", "nph", "mbs", "som", "m11", "roe", "wwk", "zen", "m10", "arb", "con", "ala", "eve", "shm", "mor", "lrw", "10e", "fut", "plc", "tsp", "csp", "dis", "gpt", "rav", "9ed", "sok", "8ed", "bok", "chk", "5dn", "dst", "mrd")
+                set_codes_clause = ", ".join(f"'{s}'" for s in modern_sets)
                 format_clause = (
                     f"AND c.raw_scryfall_data->'legalities'->>'modern' = 'legal'"
                     f" AND c.raw_scryfall_data->'legalities'->>'standard' != 'legal'"
                     f" AND c.raw_scryfall_data->'legalities'->>'pioneer' != 'legal'"
+                    f" AND c.set_code IN ({set_codes_clause})"
                 )
 
         query = f"""
