@@ -168,7 +168,7 @@ async def search_cards(
     cache_key = f"api:cards:search:{clean_query.lower()}:l{limit}"
 
     async def fetch_search():
-        query = """
+        query = f"""
         SELECT
             c.card_id,
             c.oracle_id,
