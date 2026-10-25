@@ -54,7 +54,15 @@ def flush_to_db(cursor, cards_batch, prices_batch):
         execute_values(cursor, """
             INSERT INTO dim_cards (card_id, oracle_id, name, set_code, collector_number, rarity, mana_value, colors, raw_scryfall_data)
             VALUES %s 
-            ON CONFLICT (card_id) DO NOTHING
+            ON CONFLICT (card_id) DO UPDATE SET
+                oracle_id = EXCLUDED.oracle_id,
+                name = EXCLUDED.name,
+                set_code = EXCLUDED.set_code,
+                collector_number = EXCLUDED.collector_number,
+                rarity = EXCLUDED.rarity,
+                mana_value = EXCLUDED.mana_value,
+                colors = EXCLUDED.colors,
+                raw_scryfall_data = EXCLUDED.raw_scryfall_data
         """, cards_batch, template="(%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)")
     
     # Insert price data into the TimescaleDB hypertable
@@ -118,19 +126,18 @@ def run_ingestion():
                 continue
 
             # EXTRACT & BRANCH: Metadata
-            if card_id not in existing_cards:
-                cards_to_insert.append((
-                    card_id,
-                    card.get("oracle_id"),
-                    card.get("name", "Unknown"),
-                    card.get("set", "unknown"),
-                    card.get("collector_number", "0"),
-                    card.get("rarity", "common"),
-                    card.get("cmc", 0.0),
-                    card.get("colors", []),
-                    json.dumps(card) # Dumps raw object for JSONB column
-                ))
-                existing_cards.add(card_id) # Add to RAM cache immediately
+            # Always upsert metadata so fresh Scryfall data (e.g. legalities) updates existing cards
+            cards_to_insert.append((
+                card_id,
+                card.get("oracle_id"),
+                card.get("name", "Unknown"),
+                card.get("set", "unknown"),
+                card.get("collector_number", "0"),
+                card.get("rarity", "common"),
+                card.get("cmc", 0.0),
+                card.get("colors", []),
+                json.dumps(card) # Dumps raw object for JSONB column
+            ))
             
             # EXTRACT & BRANCH: Prices
             prices = card.get("prices", {})
