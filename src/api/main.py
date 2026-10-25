@@ -237,6 +237,10 @@ async def get_card_history(
                 SELECT
                     card_id, oracle_id, name, set_code, collector_number, rarity, mana_value,
                     COALESCE(
+                        raw_scryfall_data->'oracle_text',
+                        raw_scryfall_data->'card_faces'->0->'oracle_text'
+                    ) AS oracle_text,
+                    COALESCE(
                         raw_scryfall_data->'image_uris'->>'normal',
                         raw_scryfall_data->'card_faces'->0->'image_uris'->>'normal'
                     ) AS image_uri,
