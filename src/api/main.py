@@ -101,7 +101,7 @@ async def get_market_movers(
                 set_codes_clause = ", ".join(f"'{s}'" for s in standard_sets)
                 format_clause = (
                     f"AND c.raw_scryfall_data->'legalities'->>'standard' = 'legal'"
-                    f" AND c.set_code IN ({set_codes_clause})"
+                    f" AND UPPER(c.set_code) IN ({set_codes_clause})"
                 )
             elif format == "pioneer":
                 format_clause = (
