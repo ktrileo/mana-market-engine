@@ -104,9 +104,13 @@ async def get_market_movers(
                     f" AND UPPER(c.set_code) IN ({set_codes_clause})"
                 )
             elif format == "pioneer":
+                # Pioneer sets (non-Standard, to avoid reprints already in Standard section)
+                pioneer_sets = ("MAT", "MOM", "ONE", "BRO", "DMU", "SNC", "NEO", "VOW", "MID", "AFR", "STX", "KHM", "ZNR", "M21", "IKO", "THB", "ELD", "M20", "WAR", "RNA", "GRN", "M19", "DOM", "RIX", "XLN", "HOU", "AKH", "AER", "KLD", "EMN", "SOI", "OGW", "BFZ", "ORI", "DTK", "FRF", "KTK", "M15", "JOU", "BNG", "THS", "M14", "DGM", "GTC", "RTR")
+                set_codes_clause = ", ".join(f"'{s}'" for s in pioneer_sets)
                 format_clause = (
                     f"AND c.raw_scryfall_data->'legalities'->>'pioneer' = 'legal'"
                     f" AND c.raw_scryfall_data->'legalities'->>'standard' != 'legal'"
+                    f" AND UPPER(c.set_code) IN ({set_codes_clause})"
                 )
             elif format == "modern":
                 format_clause = (
