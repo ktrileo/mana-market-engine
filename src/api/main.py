@@ -96,7 +96,13 @@ async def get_market_movers(
         format_clause = ""
         if format != "all":
             if format == "standard":
-                format_clause = f"AND c.raw_scryfall_data->'legalities'->>'standard' = 'legal'"
+                # Only allow current Standard sets to exclude reprints from older sets
+                standard_sets = ("FRA", "HOB", "MSH", "SOS", "TMT", "ECL", "TLA", "OM1", "SPM", "EOE", "FIN", "TDM", "DFT", "FDN", "DSK", "BLB", "OTJ", "MKM", "LCI", "WOE", "BIG")
+                set_codes_clause = ", ".join(f"'{s}'" for s in standard_sets)
+                format_clause = (
+                    f"AND c.raw_scryfall_data->'legalities'->>'standard' = 'legal'"
+                    f" AND c.set_code IN ({set_codes_clause})"
+                )
             elif format == "pioneer":
                 format_clause = (
                     f"AND c.raw_scryfall_data->'legalities'->>'pioneer' = 'legal'"
