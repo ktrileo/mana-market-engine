@@ -236,6 +236,9 @@ async def get_card_history(
             card_row = await conn.fetchrow("""
                 SELECT
                     card_id, oracle_id, name, set_code, collector_number, rarity, mana_value,
+                    raw_scryfall_data->>'mana_cost' AS mana_cost,
+                    raw_scryfall_data->>'power' AS power,
+                    raw_scryfall_data->>'toughness' AS toughness,
                     COALESCE(
                         raw_scryfall_data->'oracle_text',
                         raw_scryfall_data->'card_faces'->0->'oracle_text'

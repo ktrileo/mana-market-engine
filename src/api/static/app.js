@@ -308,6 +308,11 @@ document.addEventListener('alpine:init', () => {
             return `${num > 0 ? '+' : ''}${num.toFixed(1)}%`;
         },
 
+        formatOracleText(text) {
+            if (!text) return '';
+            return text.replace(/\n/g, '<br>');
+        },
+
         getRarityBadgeClass(rarity) {
             switch ((rarity || '').toLowerCase()) {
                 case 'mythic':   return 'bg-amber-500/10 text-amber-400 border-amber-500/20';

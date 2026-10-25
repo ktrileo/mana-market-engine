@@ -525,11 +525,17 @@
                     >
                     <div>
                         <h2 class="text-lg sm:text-xl font-bold text-white tracking-tight" x-text="selectedCard?.name"></h2>
-                        <p class="mt-1 text-sm text-slate-300 leading-relaxed" x-text="selectedCard?.oracle_text || ''"></p>
+                        <div class="mt-1 text-sm text-slate-300 leading-relaxed" x-html="formatOracleText(selectedCard?.oracle_text)"></div>
                         <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
                             <span class="font-mono uppercase font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700" x-text="selectedCard?.set_code"></span>
                             <span class="capitalize px-2 py-0.5 rounded border" :class="getRarityBadgeClass(selectedCard?.rarity)" x-text="selectedCard?.rarity"></span>
                             <span class="text-slate-400" x-show="selectedCard?.collector_number" x-text="`#${selectedCard?.collector_number}`"></span>
+                            <template x-if="selectedCard?.mana_cost">
+                                <span class="font-mono text-slate-300" x-text="selectedCard?.mana_cost"></span>
+                            </template>
+                            <template x-if="selectedCard?.power !== null && selectedCard?.power !== undefined && selectedCard?.toughness !== null && selectedCard?.toughness !== undefined">
+                                <span class="font-mono text-emerald-400" x-text="`${selectedCard?.power}/${selectedCard?.toughness}`"></span>
+                            </template>
                         </div>
                         <div class="mt-2.5 flex items-center space-x-3 text-xs">
                             <a 
