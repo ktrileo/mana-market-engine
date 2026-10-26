@@ -117,7 +117,6 @@ document.addEventListener('alpine:init', () => {
                 : (a, b) => Math.abs(parseFloat(b.percent_change || 0)) - Math.abs(parseFloat(a.percent_change || 0));
             this.movers = [...this.movers].sort(sortFn);
             this.watchMovers = [...this.watchMovers].sort(sortFn);
-            this.renderKey++;
         },
 
         async fetchSummaryHighlights() {
