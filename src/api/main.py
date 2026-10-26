@@ -97,7 +97,7 @@ async def get_market_movers(
         if format != "all":
             if format == "standard":
                 # Only allow current Standard sets to exclude reprints from older sets
-                standard_sets = ("FRA", "HOB", "MSH", "SOS", "TMT", "ECL", "TLA", "OM1", "SPM", "EOE", "FIN", "TDM", "DFT", "FDN", "DSK", "BLB", "OTJ", "MKM", "LCI", "WOE", "BIG")
+                standard_sets = ("FRA", "HOB", "MSH", "SOS", "TMT", "ECL", "TLA", "OM1", "SPM", "EOE", "FIN", "TDM", "DFT", "FDN", "DSK", "BLB", "OTJ", "MKM", "LCI", "WOE", "BIG", "TRK")
                 set_codes_clause = ", ".join(f"'{s}'" for s in standard_sets)
                 format_clause = (
                     f"AND c.raw_scryfall_data->'legalities'->>'standard' = 'legal'"
@@ -105,7 +105,7 @@ async def get_market_movers(
                 )
             elif format == "pioneer":
                 # Pioneer sets (non-Standard, to avoid reprints already in Standard section)
-                pioneer_sets = ("MAT", "MOM", "ONE", "BRO", "DMU", "SNC", "NEO", "VOW", "MID", "AFR", "STX", "KHM", "ZNR", "M21", "IKO", "THB", "ELD", "M20", "WAR", "RNA", "GRN", "M19", "DOM", "RIX", "XLN", "HOU", "AKH", "AER", "KLD", "EMN", "SOI", "OGW", "BFZ", "ORI", "DTK", "FRF", "KTK", "M15", "JOU", "BNG", "THS", "M14", "DGM", "GTC", "RTR")
+                pioneer_sets = ("MAT", "MOM", "ONE", "BRO", "DMU", "SNC", "NEO", "VOW", "MID", "AFR", "STX", "KHM", "ZNR", "M21", "IKO", "THB", "ELD", "M20", "WAR", "RNA", "GRN", "M19", "DOM", "RIX", "XLN", "HOU", "AKH", "AER", "KLD", "EMN", "SOI", "OGW", "BFZ", "ORI", "DTK", "FRF", "KTK", "M15", "JOU", "BNG", "THS", "M14", "DGM", "GTC", "RTR", "TRK")
                 set_codes_clause = ", ".join(f"'{s}'" for s in pioneer_sets)
                 format_clause = (
                     f"AND c.raw_scryfall_data->'legalities'->>'pioneer' = 'legal'"
@@ -114,7 +114,7 @@ async def get_market_movers(
                 )
             elif format == "modern":
                 # Modern sets (non-Standard/Pioneer, to avoid reprints already in those sections)
-                modern_sets = ("fra", "hob", "msh", "sos", "tmt", "ecl", "tla", "spm", "eoe", "fin", "tdm", "dft", "fdn", "dsk", "blb", "acr", "mh3", "otj", "mkm", "lci", "woe", "ltr", "mat", "mom", "one", "bro", "dmu", "snc", "neo", "vow", "mid", "afr", "mh2", "stx", "khm", "znr", "m21", "iko", "thb", "eld", "m20", "mh1", "war", "rna", "grn", "m19", "dom", "rix", "xln", "hou", "akh", "aer", "kld", "emn", "soi", "ogw", "bfz", "ori", "dtk", "frf", "ktk", "m15", "jou", "bng", "ths", "m14", "dgm", "gtc", "rtr", "m13", "avr", "dka", "isd", "m12", "nph", "mbs", "som", "m11", "roe", "wwk", "zen", "m10", "arb", "con", "ala", "eve", "shm", "mor", "lrw", "10e", "fut", "plc", "tsp", "csp", "dis", "gpt", "rav", "9ed", "sok", "8ed", "bok", "chk", "5dn", "dst", "mrd")
+                modern_sets = ("fra", "hob", "msh", "sos", "tmt", "ecl", "tla", "spm", "eoe", "fin", "tdm", "dft", "fdn", "dsk", "blb", "acr", "mh3", "otj", "mkm", "lci", "woe", "ltr", "mat", "mom", "one", "bro", "dmu", "snc", "neo", "vow", "mid", "afr", "mh2", "stx", "khm", "znr", "m21", "iko", "thb", "eld", "m20", "mh1", "war", "rna", "grn", "m19", "dom", "rix", "xln", "hou", "akh", "aer", "kld", "emn", "soi", "ogw", "bfz", "ori", "dtk", "frf", "ktk", "m15", "jou", "bng", "ths", "m14", "dgm", "gtc", "rtr", "m13", "avr", "dka", "isd", "m12", "nph", "mbs", "som", "m11", "roe", "wwk", "zen", "m10", "arb", "con", "ala", "eve", "shm", "mor", "lrw", "10e", "fut", "plc", "tsp", "csp", "dis", "gpt", "rav", "9ed", "sok", "8ed", "bok", "chk", "5dn", "dst", "mrd", "trk")
                 set_codes_clause = ", ".join(f"'{s}'" for s in modern_sets)
                 format_clause = (
                     f"AND c.raw_scryfall_data->'legalities'->>'modern' = 'legal'"
