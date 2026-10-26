@@ -359,7 +359,7 @@
                 <div class="flex items-center space-x-1.5 text-xs text-slate-400">
                     <span class="hidden sm:inline">Sort:</span>
                     <button 
-                        @click="sortByVelocity = !sortByVelocity"
+                        @click="toggleVelocitySort()"
                         class="px-2.5 py-1.5 rounded-lg border transition-all text-xs font-medium"
                         :class="sortByVelocity ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300' : 'bg-slate-950/80 border-slate-800/80 text-slate-400 hover:text-slate-200'"
                     >
