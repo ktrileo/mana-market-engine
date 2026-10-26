@@ -184,7 +184,7 @@ document.addEventListener('alpine:init', () => {
                 this.selectedCard = data.card || initialCardData;
                 this.cardStats = data.stats;
                 this.cardHistory = data.history || [];
-                this.$nextTick(() => this.renderPriceChart(this.cardHistory));
+                this.renderPriceChart(this.cardHistory);
             } catch (err) {
                 console.error("Failed to load card history:", err);
             } finally {
@@ -203,11 +203,6 @@ document.addEventListener('alpine:init', () => {
             const canvas = document.getElementById('priceHistoryChart');
             if (!canvas) return;
 
-            if (this.chartInstance) {
-                this.chartInstance.destroy();
-                this.chartInstance = null;
-            }
-
             const validPoints = history.filter(h => h.price_eur !== null && h.price_eur !== undefined);
             if (validPoints.length === 0) return;
 
@@ -221,65 +216,73 @@ document.addEventListener('alpine:init', () => {
             const lineColor = isPositive ? '#10b981' : '#f43f5e';
             const bgGradientColor = isPositive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)';
 
-            const ctx = canvas.getContext('2d');
-            const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-            gradient.addColorStop(0, bgGradientColor);
-            gradient.addColorStop(1, 'rgba(15, 23, 42, 0)');
+            if (this.chartInstance) {
+                this.chartInstance.data.labels = labels;
+                this.chartInstance.data.datasets[0].data = dataValues;
+                this.chartInstance.options.plugins.tooltips.callbacks.label = (ctx) => `€${parseFloat(ctx.parsed.y).toFixed(2)} EUR`;
+                this.chartInstance.options.scales.y.ticks.callback = (val) => `€${parseFloat(val).toFixed(2)}`;
+                this.chartInstance.update();
+            } else {
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+                gradient.addColorStop(0, bgGradientColor);
+                gradient.addColorStop(1, 'rgba(15, 23, 42, 0)');
 
-            this.chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: 'Market Price (EUR)',
-                        data: dataValues,
-                        borderColor: lineColor,
-                        backgroundColor: gradient,
-                        borderWidth: 2.5,
-                        fill: true,
-                        tension: 0.35,
-                        pointRadius: dataValues.length > 20 ? 1.5 : 3.5,
-                        pointHoverRadius: 6,
-                        pointBackgroundColor: lineColor,
-                        pointBorderColor: '#0f172a',
-                        pointBorderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { intersect: false, mode: 'index' },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#0f172a',
-                            titleColor: '#94a3b8',
-                            bodyColor: '#f8fafc',
-                            borderColor: '#334155',
-                            borderWidth: 1,
-                            padding: 10,
-                            displayColors: false,
-                            callbacks: {
-                                label: (ctx) => `€${parseFloat(ctx.parsed.y).toFixed(2)} EUR`
-                            }
-                        }
+                this.chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Market Price (EUR)',
+                            data: dataValues,
+                            borderColor: lineColor,
+                            backgroundColor: gradient,
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: dataValues.length > 20 ? 1.5 : 3.5,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: lineColor,
+                            pointBorderColor: '#0f172a',
+                            pointBorderWidth: 2
+                        }]
                     },
-                    scales: {
-                        x: {
-                            grid: { color: 'rgba(51, 65, 85, 0.3)', drawBorder: false },
-                            ticks: { color: '#64748b', font: { size: 11 } }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { intersect: false, mode: 'index' },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#0f172a',
+                                titleColor: '#94a3b8',
+                                bodyColor: '#f8fafc',
+                                borderColor: '#334155',
+                                borderWidth: 1,
+                                padding: 10,
+                                displayColors: false,
+                                callbacks: {
+                                    label: (ctx) => `€${parseFloat(ctx.parsed.y).toFixed(2)} EUR`
+                                }
+                            }
                         },
-                        y: {
-                            grid: { color: 'rgba(51, 65, 85, 0.3)', drawBorder: false },
-                            ticks: {
-                                color: '#64748b',
-                                font: { size: 11 },
-                                callback: (val) => `€${parseFloat(val).toFixed(2)}`
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(51, 65, 85, 0.3)', drawBorder: false },
+                                ticks: { color: '#64748b', font: { size: 11 } }
+                            },
+                            y: {
+                                grid: { color: 'rgba(51, 65, 85, 0.3)', drawBorder: false },
+                                ticks: {
+                                    color: '#64748b',
+                                    font: { size: 11 },
+                                    callback: (val) => `€${parseFloat(val).toFixed(2)}`
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            }
         },
 
         closeModal() {
