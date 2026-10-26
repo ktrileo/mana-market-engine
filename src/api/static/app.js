@@ -26,6 +26,7 @@ document.addEventListener('alpine:init', () => {
         watchLoading: false,
         showWatch: true,
         sortByVelocity: false,
+        renderKey: 0,
 
         // Summary Highlight State
         topGainer: null,
@@ -115,14 +116,9 @@ document.addEventListener('alpine:init', () => {
             const sortFn = this.sortByVelocity
                 ? (a, b) => Math.abs(parseFloat(b.velocity || 0)) - Math.abs(parseFloat(a.velocity || 0))
                 : (a, b) => Math.abs(parseFloat(b.percent_change || 0)) - Math.abs(parseFloat(a.percent_change || 0));
-            const sortedMovers = [...this.movers].sort(sortFn);
-            const sortedWatch = [...this.watchMovers].sort(sortFn);
-            this.movers = [];
-            this.watchMovers = [];
-            this.$nextTick(() => {
-                this.movers = sortedMovers;
-                this.watchMovers = sortedWatch;
-            });
+            this.movers = [...this.movers].sort(sortFn);
+            this.watchMovers = [...this.watchMovers].sort(sortFn);
+            this.renderKey++;
         },
 
         async fetchSummaryHighlights() {

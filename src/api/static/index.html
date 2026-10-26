@@ -415,7 +415,7 @@
                         </tr>
 
                         <!-- Card Rows -->
-                        <template x-for="(card, index) in movers" :key="index">
+                        <template x-for="(card, index) in movers" :key="renderKey + '-' + index">
                             <tr 
                                 class="hover:bg-slate-800/40 transition-colors cursor-pointer group"
                                 @click="card.card_id ? inspectCardById(card.card_id, card) : null"
@@ -541,7 +541,7 @@
                                     <p class="text-xs">No cards in watch range (5–15% change).</p>
                                 </td>
                             </tr>
-                            <template x-for="(card, index) in watchMovers" :key="index">
+                            <template x-for="(card, index) in watchMovers" :key="renderKey + '-' + index">
                                 <tr 
                                     class="hover:bg-slate-800/40 transition-colors cursor-pointer group"
                                     @click="card.card_id ? inspectCardById(card.card_id, card) : null"
