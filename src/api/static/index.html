@@ -360,7 +360,7 @@
                     <span class="hidden sm:inline">Sort:</span>
                     <select 
                         class="bg-slate-950/80 border border-slate-800/80 rounded-lg px-2.5 py-1.5 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        @change="sortByVelocity = ($event.target.value === 'true'); toggleVelocitySort();"
+                        onchange="window.__sortVelocity(this.value)"
                     >
                         <option value="false">Total %</option>
                         <option value="true">Velocity</option>

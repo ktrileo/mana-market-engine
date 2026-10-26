@@ -10,6 +10,18 @@ const FORMATS = [
     { key: 'modern',   label: 'Modern',     icon: '⚙️', range: 'MRD → Present' },
 ];
 
+window.__sortVelocity = function(val) {
+    const el = document.querySelector('[x-data]');
+    if (!el || !el._x_dataStack) return;
+    const data = el._x_dataStack[0];
+    data.sortByVelocity = (val === 'true');
+    const sortFn = data.sortByVelocity
+        ? (a, b) => Math.abs(parseFloat(b.velocity || 0)) - Math.abs(parseFloat(a.velocity || 0))
+        : (a, b) => Math.abs(parseFloat(b.percent_change || 0)) - Math.abs(parseFloat(a.percent_change || 0));
+    data.movers = [...data.movers].sort(sortFn);
+    data.watchMovers = [...data.watchMovers].sort(sortFn);
+};
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('dashboardApp', () => ({
         // Format State
