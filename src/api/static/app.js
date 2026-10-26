@@ -22,6 +22,10 @@ document.addEventListener('alpine:init', () => {
         limit: 15,
         loading: false,
         movers: [],
+        watchMovers: [],
+        watchLoading: false,
+        showWatch: true,
+        sortByVelocity: false,
 
         // Summary Highlight State
         topGainer: null,
@@ -75,24 +79,45 @@ document.addEventListener('alpine:init', () => {
         },
 
         // --- Data Fetching ---
-        moversUrl(direction, limit) {
-            return `/api/v1/movers?direction=${direction}&days=${this.days}&limit=${limit}&format=${this.activeFormat}`;
+        moversUrl(direction, limit, tier = 'confirmed') {
+            return `/api/v1/movers?direction=${direction}&days=${this.days}&limit=${limit}&format=${this.activeFormat}&tier=${tier}`;
         },
 
         async fetchMovers() {
             this.loading = true;
+            this.watchLoading = true;
             try {
-                const resp = await fetch(this.moversUrl(this.direction, this.limit));
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                const data = await resp.json();
-                this.movers = data.results || [];
+                const [moversResp, watchResp] = await Promise.all([
+                    fetch(this.moversUrl(this.direction, this.limit, 'confirmed')),
+                    fetch(this.moversUrl(this.direction, this.limit, 'watch'))
+                ]);
+                if (moversResp.ok) {
+                    const data = await moversResp.json();
+                    this.movers = data.results || [];
+                }
+                if (watchResp.ok) {
+                    const data = await watchResp.json();
+                    this.watchMovers = data.results || [];
+                }
                 this.lastUpdatedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             } catch (err) {
                 console.error("Failed to fetch market movers:", err);
                 this.movers = [];
+                this.watchMovers = [];
             } finally {
                 this.loading = false;
+                this.watchLoading = false;
             }
+        },
+
+        get sortedMovers() {
+            if (!this.sortByVelocity) return this.movers;
+            return [...this.movers].sort((a, b) => Math.abs(parseFloat(b.velocity || 0)) - Math.abs(parseFloat(a.velocity || 0)));
+        },
+
+        get sortedWatchMovers() {
+            if (!this.sortByVelocity) return this.watchMovers;
+            return [...this.watchMovers].sort((a, b) => Math.abs(parseFloat(b.velocity || 0)) - Math.abs(parseFloat(a.velocity || 0)));
         },
 
         async fetchSummaryHighlights() {

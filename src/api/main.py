@@ -78,7 +78,8 @@ async def get_market_movers(
     direction: str = Query("gainers", pattern="^(gainers|losers)$"),
     days: int = Query(1, ge=1, le=30),
     limit: int = Query(10, ge=1, le=50),
-    format: str = Query("all", pattern="^(all|standard|pioneer|modern)$")
+    format: str = Query("all", pattern="^(all|standard|pioneer|modern)$"),
+    tier: str = Query("confirmed", pattern="^(confirmed|watch)$")
 ):
     """Fetch the top market gainers or losers filtered by MTG format, leveraging Redis cache.
 
@@ -86,7 +87,7 @@ async def get_market_movers(
     in raw_scryfall_data. This means rotation and ban list changes are automatically
     reflected the next time the daily ingestion worker runs.
     """
-    cache_key = f"api:movers:{direction}:d{days}:l{limit}:f{format}"
+    cache_key = f"api:movers:{direction}:d{days}:l{limit}:f{format}:t{tier}"
 
     async def fetch_movers():
         # Build the format legality clause dynamically.
@@ -123,6 +124,9 @@ async def get_market_movers(
                     f" AND c.set_code IN ({set_codes_clause})"
                 )
 
+        min_pct = 5.0 if tier == "watch" else MIN_PERCENT_CHANGE
+        max_pct_clause = "AND ABS((cp.price_now - pp.price_past) / pp.price_past * 100) < 15.0" if tier == "watch" else ""
+
         query = f"""
         WITH current_prices AS (
             SELECT DISTINCT ON (card_id) card_id, price_eur AS price_now
@@ -134,16 +138,41 @@ async def get_market_movers(
             FROM fact_card_prices
             WHERE price_eur IS NOT NULL AND timestamp <= NOW() - $1::interval
             ORDER BY card_id, timestamp DESC
+        ),
+        past_3d AS (
+            SELECT DISTINCT ON (card_id) card_id, price_eur AS price_3d
+            FROM fact_card_prices
+            WHERE price_eur IS NOT NULL AND timestamp <= NOW() - INTERVAL '3 days'
+            ORDER BY card_id, timestamp DESC
+        ),
+        past_7d AS (
+            SELECT DISTINCT ON (card_id) card_id, price_eur AS price_7d
+            FROM fact_card_prices
+            WHERE price_eur IS NOT NULL AND timestamp <= NOW() - INTERVAL '7 days'
+            ORDER BY card_id, timestamp DESC
         )
         SELECT c.card_id, c.name, c.set_code, c.rarity, cp.price_now, pp.price_past,
                (cp.price_now - pp.price_past) AS abs_change,
-               ROUND(((cp.price_now - pp.price_past) / pp.price_past * 100), 2) AS percent_change
+               ROUND(((cp.price_now - pp.price_past) / pp.price_past * 100), 2) AS percent_change,
+               CASE
+                 WHEN p3.price_3d IS NOT NULL AND p7.price_7d IS NOT NULL AND p7.price_7d > 0
+                   AND ROUND(((cp.price_now - p3.price_3d) / p3.price_3d * 100), 2) > 0
+                   AND ROUND(((cp.price_now - p3.price_3d) / p3.price_3d * 100), 2) > ROUND(((cp.price_now - p7.price_7d) / p7.price_7d * 100), 2) / 2.0
+                 THEN true
+                 WHEN p3.price_3d IS NOT NULL AND p7.price_7d IS NULL AND p3.price_3d > 0
+                   AND ROUND(((cp.price_now - p3.price_3d) / p3.price_3d * 100), 2) > 0
+                 THEN true
+                 ELSE false
+               END AS accelerating
         FROM current_prices cp
         JOIN past_prices pp ON cp.card_id = pp.card_id
         JOIN dim_cards c ON cp.card_id = c.card_id
+        LEFT JOIN past_3d p3 ON cp.card_id = p3.card_id
+        LEFT JOIN past_7d p7 ON cp.card_id = p7.card_id
         WHERE pp.price_past >= $2
           AND ABS(cp.price_now - pp.price_past) >= $3
           AND ABS((cp.price_now - pp.price_past) / pp.price_past * 100) >= $4
+          {max_pct_clause}
           { EXCLUDED_CARD_CLAUSE }
           { format_clause }
         """
@@ -158,15 +187,22 @@ async def get_market_movers(
                 timedelta(days=days),
                 MIN_BASE_PRICE,
                 MIN_ABSOLUTE_CHANGE,
-                MIN_PERCENT_CHANGE,
+                min_pct,
                 limit
             )
+            results = []
+            for row in rows:
+                r = dict(row)
+                pc = float(r.get("percent_change", 0) or 0)
+                r["velocity"] = round(pc / days, 2) if days > 0 else pc
+                results.append(r)
             return {
                 "window_days": days,
                 "direction": direction,
                 "format": format,
+                "tier": tier,
                 "cached": False,
-                "results": [dict(row) for row in rows]
+                "results": results
             }
 
     return await cached_json_response(app.state.redis, cache_key, fetch_movers)
