@@ -111,6 +111,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         toggleVelocitySort() {
+            console.log('toggleVelocitySort called, current:', this.sortByVelocity);
             this.sortByVelocity = !this.sortByVelocity;
             const sortFn = this.sortByVelocity
                 ? (a, b) => Math.abs(parseFloat(b.velocity || 0)) - Math.abs(parseFloat(a.velocity || 0))
