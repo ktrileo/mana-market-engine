@@ -110,14 +110,13 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        get sortedMovers() {
-            if (!this.sortByVelocity) return this.movers;
-            return [...this.movers].sort((a, b) => Math.abs(parseFloat(b.velocity || 0)) - Math.abs(parseFloat(a.velocity || 0)));
-        },
-
-        get sortedWatchMovers() {
-            if (!this.sortByVelocity) return this.watchMovers;
-            return [...this.watchMovers].sort((a, b) => Math.abs(parseFloat(b.velocity || 0)) - Math.abs(parseFloat(a.velocity || 0)));
+        toggleVelocitySort() {
+            this.sortByVelocity = !this.sortByVelocity;
+            const sortFn = this.sortByVelocity
+                ? (a, b) => Math.abs(parseFloat(b.velocity || 0)) - Math.abs(parseFloat(a.velocity || 0))
+                : (a, b) => Math.abs(parseFloat(b.percent_change || 0)) - Math.abs(parseFloat(a.percent_change || 0));
+            this.movers = [...this.movers].sort(sortFn);
+            this.watchMovers = [...this.watchMovers].sort(sortFn);
         },
 
         async fetchSummaryHighlights() {

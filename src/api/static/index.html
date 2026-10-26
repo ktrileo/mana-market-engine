@@ -459,15 +459,15 @@
                                 <!-- Percent Change -->
                                 <td class="py-3.5 px-4 text-right font-mono font-bold">
                                     <span 
+                                        x-show="card.accelerating"
+                                        class="mr-1 text-xs"
+                                        title="Accelerating: most of the move happened in the last 3 days"
+                                    >🔥</span>
+                                    <span 
                                         class="inline-flex items-center px-2 py-0.5 rounded text-xs"
                                         :class="parseFloat(card.percent_change) > 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-emerald-500/20'"
                                         x-text="formatPercent(card.percent_change)"
                                     ></span>
-                                    <span 
-                                        x-show="card.accelerating"
-                                        class="ml-1 text-xs"
-                                        title="Accelerating: most of the move happened in the last 3 days"
-                                    >🔥</span>
                                 </td>
 
                                 <!-- Action Button -->
@@ -489,7 +489,7 @@
 
             <!-- Footer summary line -->
             <div class="px-4 py-3 bg-slate-900/60 border-t border-slate-800/80 text-xs text-slate-400 flex items-center justify-between">
-                <span>Showing top <strong class="text-slate-200" x-text="sortedMovers.length"></strong> <span x-text="direction"></span> · <span class="text-sky-400" x-text="`${activeFormatMeta.icon} ${activeFormatMeta.label}`"></span></span>
+                <span>Showing top <strong class="text-slate-200" x-text="movers.length"></strong> <span x-text="direction"></span> · <span class="text-sky-400" x-text="`${activeFormatMeta.icon} ${activeFormatMeta.label}`"></span></span>
                 <span class="font-mono text-[11px] text-slate-500">FastAPI &bull; Redis Cache &bull; TimescaleDB</span>
             </div>
 
@@ -536,12 +536,12 @@
                                     </div>
                                 </td>
                             </tr>
-                            <tr x-show="!watchLoading && sortedWatchMovers.length === 0" x-cloak>
+                            <tr x-show="!watchLoading && watchMovers.length === 0" x-cloak>
                                 <td colspan="9" class="py-8 text-center text-slate-400">
                                     <p class="text-xs">No cards in watch range (5–15% change).</p>
                                 </td>
                             </tr>
-                            <template x-for="(card, index) in sortedWatchMovers" :key="index">
+                            <template x-for="(card, index) in watchMovers" :key="index">
                                 <tr 
                                     class="hover:bg-slate-800/40 transition-colors cursor-pointer group"
                                     @click="card.card_id ? inspectCardById(card.card_id, card) : null"
@@ -570,14 +570,14 @@
                                     </td>
                                     <td class="py-3 px-4 text-right font-mono font-bold">
                                         <span 
+                                            x-show="card.accelerating"
+                                            class="mr-1 text-xs"
+                                            title="Accelerating: most of the move happened in the last 3 days"
+                                        >🔥</span>
+                                        <span 
                                             class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20"
                                             x-text="formatPercent(card.percent_change)"
                                         ></span>
-                                        <span 
-                                            x-show="card.accelerating"
-                                            class="ml-1 text-xs"
-                                            title="Accelerating: most of the move happened in the last 3 days"
-                                        >🔥</span>
                                     </td>
                                     <td class="py-3 px-4 text-center no-print">
                                         <button 
