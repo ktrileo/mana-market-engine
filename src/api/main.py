@@ -190,12 +190,7 @@ async def get_market_movers(
                 min_pct,
                 limit
             )
-            results = []
-            for row in rows:
-                r = dict(row)
-                pc = float(r.get("percent_change", 0) or 0)
-                r["velocity"] = round(pc / days, 2) if days > 0 else pc
-                results.append(r)
+            results = [dict(row) for row in rows]
             return {
                 "window_days": days,
                 "direction": direction,

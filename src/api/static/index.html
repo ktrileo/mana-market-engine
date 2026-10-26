@@ -381,7 +381,7 @@
                         
                         <!-- Loading State -->
                         <tr x-show="loading" x-cloak>
-                            <td colspan="10" class="py-12 text-center text-slate-400">
+                            <td colspan="9" class="py-12 text-center text-slate-400">
                                 <div class="inline-flex items-center space-x-2 text-sm">
                                     <svg class="animate-spin w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -394,7 +394,7 @@
 
                         <!-- Empty State -->
                         <tr x-show="!loading && movers.length === 0" x-cloak>
-                            <td colspan="10" class="py-12 text-center text-slate-400">
+                            <td colspan="9" class="py-12 text-center text-slate-400">
                                 <div class="max-w-sm mx-auto space-y-1">
                                     <p class="font-medium text-slate-200">No market movers found</p>
                                     <p class="text-xs text-slate-400">No <span x-text="activeFormatMeta.label"></span> cards met the minimum threshold ($1.00 base, 15% shift, $0.50 delta) over the selected window.</p>
@@ -457,8 +457,6 @@
                                         x-text="formatPercent(card.percent_change)"
                                     ></span>
                                 </td>
-                                <td class="py-3.5 px-4 text-right font-mono text-slate-400 text-xs" x-text="`${parseFloat(card.velocity || 0).toFixed(2)}%/d`"></td>
-
                                 <!-- Action Button -->
                                 <td class="py-3.5 px-4 text-center no-print">
                                     <button 
@@ -510,13 +508,12 @@
                                 <th class="py-3 px-4 text-right">Latest Price</th>
                                 <th class="py-3 px-4 text-right">Euro Change</th>
                                 <th class="py-3 px-4 text-right">Percent Change</th>
-                                <th class="py-3 px-4 text-right">Velocity</th>
                                 <th class="py-3 px-4 text-center w-24 no-print">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-800/50">
                             <tr x-show="watchLoading" x-cloak>
-                                <td colspan="10" class="py-8 text-center text-slate-400">
+                                <td colspan="9" class="py-8 text-center text-slate-400">
                                     <div class="inline-flex items-center space-x-2 text-sm">
                                         <svg class="animate-spin w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -527,7 +524,7 @@
                                 </td>
                             </tr>
                             <tr x-show="!watchLoading && watchMovers.length === 0" x-cloak>
-                                <td colspan="10" class="py-8 text-center text-slate-400">
+                                <td colspan="9" class="py-8 text-center text-slate-400">
                                     <p class="text-xs">No cards in watch range (5–15% change).</p>
                                 </td>
                             </tr>
@@ -569,7 +566,6 @@
                                             x-text="formatPercent(card.percent_change)"
                                         ></span>
                                     </td>
-                                    <td class="py-3 px-4 text-right font-mono text-slate-400 text-xs" x-text="`${parseFloat(card.velocity || 0).toFixed(2)}%/d`"></td>
                                     <td class="py-3 px-4 text-center no-print">
                                         <button 
                                             type="button" 
